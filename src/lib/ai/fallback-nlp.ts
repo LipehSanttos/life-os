@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { format, addDays, nextSunday, setDate, isPast } from "date-fns";
+import { format, addDays, nextSunday, nextMonday, nextTuesday, nextWednesday, nextThursday, nextFriday, nextSaturday, setDate, setHours, setMinutes, isPast } from "date-fns";
 import { formatDate, formatCurrency } from "@/lib/utils";
 
 export interface NLPResult {
@@ -44,11 +44,11 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
       };
     }
 
-    let reply = "⚠️ **Você possui itens atrasados:**\n\n";
+    let reply = "⚠️ **Você possui itens que necessitam de atenção:**\n\n";
     if (overdueTasks.length > 0) {
       reply += `📋 **Tarefas Atrasadas (${overdueTasks.length}):**\n`;
       overdueTasks.forEach((t) => {
-        reply += `- **${t.title}** (${t.category?.name || "Sem categoria"}) - Prazo era: ${formatDate(t.dueDate)}\n`;
+        reply += `- **${t.title}** (${t.category?.name || "Sem categoria"}) - Prazo original: ${formatDate(t.dueDate)}\n`;
       });
     }
 
@@ -62,8 +62,8 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
     return { reply };
   }
 
-  // 2. QUERY: Hoje?
-  if (lower.includes("hoje") && (lower.includes("tarefa") || lower.includes("fazer") || lower.includes("tenho") || lower.includes("compromisso"))) {
+  // 2. QUERY: O que tenho para Hoje?
+  if (lower.includes("hoje") && (lower.includes("tarefa") || lower.includes("fazer") || lower.includes("tenho") || lower.includes("compromisso") || lower.includes("agenda"))) {
     const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0);
     const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59);
 
@@ -85,7 +85,7 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
 
     if (todayTasks.length === 0 && todayBills.length === 0) {
       return {
-        reply: "☀️ Você **não possui tarefas agendadas para hoje**. Deseja que eu adicione alguma atividade?",
+        reply: "☀️ Você **não possui tarefas agendadas para hoje**. Deseja que eu agende alguma atividade?",
       };
     }
 
@@ -105,43 +105,17 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
     return { reply };
   }
 
-  // 3. QUERY: Próximos dias / Semana?
-  if (lower.includes("semana") || lower.includes("próximos dias") || lower.includes("proximos dias")) {
-    const endOfWeek = addDays(now, 7);
-    const weekTasks = await prisma.task.findMany({
-      where: {
-        ...userFilter,
-        dueDate: { gte: now, lte: endOfWeek },
-        status: { in: ["PENDING", "IN_PROGRESS"] },
-      },
-      include: { category: true },
-      orderBy: { dueDate: "asc" },
-    });
-
-    if (weekTasks.length === 0) {
-      return {
-        reply: "🗓️ Você não possui tarefas agendadas para os próximos 7 dias.",
-      };
-    }
-
-    let reply = `🗓️ **Tarefas programadas para os próximos 7 dias (${weekTasks.length}):**\n\n`;
-    weekTasks.forEach((t) => {
-      reply += `- **${t.title}** (${t.category?.name || "Geral"}) ➔ *${formatDate(t.dueDate)}* [Prioridade: ${t.priority}]\n`;
-    });
-    return { reply };
-  }
-
-  // 4. ACTION: Livro (ex: "Estou lendo O Poder do Hábito e estou na página 87")
+  // 3. ACTION: Livro (ex: "Estou lendo O Poder do Hábito e estou na página 87")
   if (lower.includes("lendo") || (lower.includes("livro") && lower.includes("página"))) {
     const pageMatch = text.match(/p[áa]gina\s*(\d+)/i) || text.match(/(\d+)\s*p[áa]g/i);
     const page = pageMatch ? parseInt(pageMatch[1], 10) : 1;
 
     const books = await prisma.book.findMany({ where: userFilter });
     let targetBook = books.find((b) => lower.includes(b.title.toLowerCase()));
-    const bookTitle = targetBook ? targetBook.title : "O Poder do Hábito";
+    const bookTitle = targetBook ? targetBook.title : "Livro em Leitura";
 
     return {
-      reply: `Identifiquei sua leitura do livro **${bookTitle}** na página **${page}**. Deseja atualizar o progresso?`,
+      reply: `Identifiquei o registro de leitura do livro **"${bookTitle}"** na página **${page}**. Deseja atualizar o progresso na sua biblioteca?`,
       action: {
         type: "UPDATE_BOOK",
         title: `Atualizar leitura: ${bookTitle}`,
@@ -155,36 +129,8 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
     };
   }
 
-  // 5. ACTION: Concluir tarefa (ex: "Terminei o relatório")
-  if (lower.includes("terminei") || lower.includes("conclui") || lower.includes("finalizei")) {
-    const cleanTitle = text.replace(/^(terminei|conclui|concluí|finalizei|fiz a tarefa|fiz o|fiz a)\s*/i, "").trim();
-    const tasks = await prisma.task.findMany({
-      where: {
-        ...userFilter,
-        status: { in: ["PENDING", "IN_PROGRESS"] },
-      },
-    });
-
-    const target = tasks.find((t) => t.title.toLowerCase().includes(cleanTitle.toLowerCase()) || cleanTitle.toLowerCase().includes(t.title.toLowerCase()));
-
-    if (target) {
-      return {
-        reply: `Deseja marcar a tarefa **"${target.title}"** como concluída?`,
-        action: {
-          type: "UPDATE_TASK",
-          title: `Concluir: ${target.title}`,
-          summary: `Marcar a tarefa "${target.title}" como concluída.`,
-          payload: {
-            taskId: target.id,
-            status: "COMPLETED",
-          },
-        },
-      };
-    }
-  }
-
-  // 6. ACTION: Finanças (ex: "Pagar a internet de 120 reais todo dia 10")
-  if (lower.includes("pagar") || lower.includes("conta") || lower.includes("fatura") || lower.includes("reais") || lower.includes("r$")) {
+  // 4. ACTION: Finanças (ex: "Pagar a internet de 120 reais todo dia 10")
+  if (lower.includes("pagar") || lower.includes("fatura") || lower.includes("reais") || lower.includes("r$")) {
     const amountMatch = text.match(/R\$\s*(\d+[.,]?\d*)/i) || text.match(/(\d+[.,]?\d*)\s*reais/i);
     const dayMatch = text.match(/dia\s*(\d{1,2})/i);
     const isRecurring = lower.includes("todo dia") || lower.includes("mensal") || lower.includes("recorrente");
@@ -198,14 +144,15 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
     }
 
     let title = "Pagar conta";
-    if (lower.includes("internet")) title = "Pagar internet";
-    else if (lower.includes("manuten")) title = "Pagar manutenção do computador";
-    else if (lower.includes("luz") || lower.includes("energia")) title = "Pagar conta de luz";
+    if (lower.includes("internet")) title = "Pagar internet fibra";
+    else if (lower.includes("manuten")) title = "Manutenção do computador";
+    else if (lower.includes("luz") || lower.includes("energia")) title = "Conta de energia elétrica";
+    else if (lower.includes("cartão") || lower.includes("cartao")) title = "Fatura do cartão de crédito";
 
     const catFin = await prisma.category.findFirst({ where: { slug: "financas" } });
 
     return {
-      reply: `Entendi! Preparei o registro financeiro para **"${title}"**${amount ? ` no valor de ${formatCurrency(amount)}` : ""} para o dia **${day}**${isRecurring ? " (Recorrente mensal)" : ""}.`,
+      reply: `Identifiquei sua solicitação de pagamento para **"${title}"** no valor de **${formatCurrency(amount)}** com vencimento para o dia **${day}**${isRecurring ? " (Recorrente mensal)" : ""}. Deseja confirmar o cadastro no controle financeiro?`,
       action: {
         type: "REGISTER_FINANCE",
         title,
@@ -223,49 +170,119 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
     };
   }
 
-  // 7. ACTION: Tarefa Geral / Faculdade / Estudos / Casa
+  // 5. ACTION: Interpretação Semântica e Criação de Tarefas / Eventos
+  let targetDate = addDays(now, 1);
+  let dueTime = "09:00";
   let catSlug = "outros";
   let priority = "MEDIUM";
-  let dueDate = addDays(now, 1);
-  let taskTitle = text.replace(/^(me lembra de|cria uma tarefa para|adiciona uma tarefa para|adicionar|cria|preciso|tenho que|tenho um trabalho de)\s*/i, "").trim();
+  let description = "";
 
-  if (lower.includes("banco de dados") || lower.includes("faculdade") || lower.includes("trabalho de")) {
+  // 5.1 Extração Cronológica de Horário
+  const timeMatch =
+    text.match(/(\d{1,2})[h:](\d{2})/i) ||
+    text.match(/às\s*(\d{1,2})\s*h/i) ||
+    text.match(/(\d{1,2})\s*horas/i);
+
+  if (timeMatch) {
+    const hours = parseInt(timeMatch[1], 10);
+    const minutes = timeMatch[2] ? parseInt(timeMatch[2], 10) : 0;
+    dueTime = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+  } else if (lower.includes("tarde") || lower.includes("à tarde")) {
+    dueTime = "14:30";
+  } else if (lower.includes("noite") || lower.includes("à noite")) {
+    dueTime = "20:00";
+  } else if (lower.includes("manhã") || lower.includes("de manhã")) {
+    dueTime = "09:00";
+  }
+
+  // 5.2 Extração Cronológica de Data
+  if (lower.includes("hoje")) {
+    targetDate = now;
+  } else if (lower.includes("amanhã") || lower.includes("amanha")) {
+    targetDate = addDays(now, 1);
+  } else if (lower.includes("depois de amanhã") || lower.includes("depois de amanha")) {
+    targetDate = addDays(now, 2);
+  } else if (lower.includes("segunda")) {
+    targetDate = nextMonday(now);
+  } else if (lower.includes("terça") || lower.includes("terca")) {
+    targetDate = nextTuesday(now);
+  } else if (lower.includes("quarta")) {
+    targetDate = nextWednesday(now);
+  } else if (lower.includes("quinta")) {
+    targetDate = nextThursday(now);
+  } else if (lower.includes("sexta")) {
+    targetDate = nextFriday(now);
+  } else if (lower.includes("sábado") || lower.includes("sabado")) {
+    targetDate = nextSaturday(now);
+  } else if (lower.includes("domingo")) {
+    targetDate = nextSunday(now);
+  } else {
+    const dayExplicit = text.match(/dia\s*(\d{1,2})/i);
+    if (dayExplicit) {
+      targetDate = setDate(now, parseInt(dayExplicit[1], 10));
+      if (isPast(targetDate) && targetDate.getDate() < now.getDate()) {
+        targetDate = addDays(targetDate, 30);
+      }
+    }
+  }
+
+  // 5.3 Classificação Semântica de Categoria & Natureza da Solicitação
+  if (lower.includes("veterinár") || lower.includes("veterinar") || lower.includes("médic") || lower.includes("medic") || lower.includes("dentista") || lower.includes("vacina") || lower.includes("remédio") || lower.includes("remedio") || lower.includes("exame") || lower.includes("consulta")) {
+    catSlug = "saude";
+    priority = "HIGH";
+    description = "Compromisso de saúde/consulta.";
+  } else if (lower.includes("faculdade") || lower.includes("prova") || lower.includes("tcc") || lower.includes("banco de dados") || lower.includes("trabalho de")) {
     catSlug = "faculdade";
     priority = "HIGH";
-    const dayMatch = text.match(/dia\s*(\d{1,2})/i);
-    if (dayMatch) dueDate = setDate(now, parseInt(dayMatch[1], 10));
-  } else if (lower.includes("curso") || lower.includes("módulo") || lower.includes("modulo") || lower.includes("estudar")) {
-    catSlug = "estudos";
-    if (lower.includes("domingo")) dueDate = nextSunday(now);
-  } else if (lower.includes("mesa") || lower.includes("casa") || lower.includes("limpar")) {
-    catSlug = "casa";
-    if (lower.includes("amanhã") || lower.includes("amanha")) dueDate = addDays(now, 1);
-    else if (lower.includes("hoje")) dueDate = now;
-  } else if (lower.includes("comprar") || lower.includes("cabo") || lower.includes("adaptador")) {
-    catSlug = "compras";
-  } else if (lower.includes("joão") || lower.includes("joao") || lower.includes("cliente")) {
+    description = "Atividade acadêmica/faculdade.";
+  } else if (lower.includes("cliente") || lower.includes("orçamento") || lower.includes("orcamento") || lower.includes("proposta") || lower.includes("joão") || lower.includes("joao")) {
     catSlug = "freelance";
     priority = "HIGH";
+    description = "Alinhamento com cliente / projeto freelance.";
+  } else if (lower.includes("curso") || lower.includes("módulo") || lower.includes("modulo") || lower.includes("aula") || lower.includes("estudar")) {
+    catSlug = "estudos";
+    description = "Estudo e aprimoramento profissional.";
+  } else if (lower.includes("comprar") || lower.includes("mercado") || lower.includes("supermercado") || lower.includes("shopping") || lower.includes("farmácia")) {
+    catSlug = "compras";
+    description = "Lista de compras e suprimentos.";
+  } else if (lower.includes("casa") || lower.includes("limpar") || lower.includes("faxina") || lower.includes("conserto") || lower.includes("lavar")) {
+    catSlug = "casa";
+    description = "Organização e manutenção doméstica.";
+  }
+
+  // 5.4 Limpeza e Geração de Título Inteligente (Sem copiar o texto cru)
+  let cleanTitle = text
+    .replace(/^(preciso|tenho que|me lembra de|me lembre de|lembrar de|lembrete de|agendar|agende|marca|marcar|quero que você agende|adiciona uma tarefa para|adicionar uma tarefa para|cria uma tarefa para|criar uma tarefa para|adicionar|cria|criar|anota aí|anotar|não posso esquecer de|coloque na agenda)\s+/i, "")
+    .replace(/(na próxima|na proxima|no próximo|no proximo|nesta|neste)\s+(segunda|terça|terca|quarta|quinta|sexta|sábado|sabado|domingo|semana)/gi, "")
+    .replace(/(às|as)\s*\d{1,2}[h:]\d{0,2}/gi, "")
+    .replace(/\b\d{1,2}\s*horas\b/gi, "")
+    .replace(/\b(amanhã|amanha|hoje|depois de amanhã|depois de amanha|cedo|à tarde|à noite|de manhã)\b/gi, "")
+    .replace(/\s+/g, " ")
+    .trim();
+
+  if (cleanTitle.length > 0) {
+    cleanTitle = cleanTitle.charAt(0).toUpperCase() + cleanTitle.slice(1);
+  } else {
+    cleanTitle = "Nova Atividade";
   }
 
   const category = await prisma.category.findFirst({ where: { slug: catSlug } });
-  if (taskTitle.length > 0) {
-    taskTitle = taskTitle.charAt(0).toUpperCase() + taskTitle.slice(1);
-  } else {
-    taskTitle = "Nova Atividade";
-  }
+  const formattedDate = formatDate(targetDate);
 
   return {
-    reply: `Entendi! Deseja que eu agende a tarefa **"${taskTitle}"** para **${formatDate(dueDate)}**? Você pode confirmar a data e sincronizar o lembrete com o seu **Google Agenda** através do cartão abaixo:`,
+    reply: `Entendi a sua solicitação! Interpretei e preparei a tarefa **"${cleanTitle}"** (${category?.name || "Geral"}) para **${formattedDate}** às **${dueTime}**.\n\nConfirme abaixo para registrar no sistema e adicionar ao seu **Google Agenda**:`,
     action: {
       type: "CREATE_TASK",
-      title: `Agendar Tarefa: ${taskTitle}`,
-      summary: `${taskTitle} (Categoria: ${category?.name || "Geral"} | Data: ${formatDate(dueDate)} | Prioridade: ${priority})`,
+      title: cleanTitle,
+      summary: `${cleanTitle} (Categoria: ${category?.name || "Geral"} | Data: ${formattedDate} às ${dueTime} | Prioridade: ${priority})`,
       payload: {
-        title: taskTitle,
+        title: cleanTitle,
+        description,
         categoryId: category?.id,
+        categoryName: category?.name,
         priority,
-        dueDate: dueDate.toISOString(),
+        dueDate: targetDate.toISOString(),
+        dueTime,
       },
     },
   };
