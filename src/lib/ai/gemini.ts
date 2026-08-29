@@ -98,40 +98,43 @@ REGRAS DE CONDUTA E AGENDAMENTO:
      [ACTION:{"type":"UPDATE_BOOK","title":"Atualizar Leitura","summary":"Avanço de páginas","payload":{"bookTitle":"Nome do Livro","currentPage":87}}]`;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    
-    // Use gemini-3.6-flash with fallback to gemini-3.5-flash
-    let model;
-    try {
-      model = genAI.getGenerativeModel({
-        model: "gemini-3.6-flash",
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 1000,
-        },
-      });
-    } catch {
-      model = genAI.getGenerativeModel({
-        model: "gemini-3.5-flash",
-        generationConfig: {
-          temperature: 0.4,
-          maxOutputTokens: 1000,
-        },
-      });
+    const candidateModels = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"];
+    let rawText = "";
+
+    for (const modelName of candidateModels) {
+      try {
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          generationConfig: {
+            temperature: 0.4,
+            maxOutputTokens: 1000,
+          },
+        });
+
+        const chat = model.startChat({
+          history: [
+            { role: "user", parts: [{ text: systemInstruction }] },
+            { role: "model", parts: [{ text: `Entendido! Sou o Assistente Life OS do ${userName} conectado ao Gemini e estou pronto para gerenciar todas as suas atividades.` }] },
+            ...history.slice(-8).map((h) => ({
+              role: h.role === "assistant" ? ("model" as const) : ("user" as const),
+              parts: [{ text: h.content }],
+            })),
+          ],
+        });
+
+        const result = await chat.sendMessage(prompt);
+        rawText = result.response.text();
+        if (rawText && rawText.trim() !== "") {
+          break;
+        }
+      } catch (mErr: any) {
+        console.warn(`Model ${modelName} call failed, trying next candidate:`, mErr.message || mErr);
+      }
     }
 
-    const chat = model.startChat({
-      history: [
-        { role: "user", parts: [{ text: systemInstruction }] },
-        { role: "model", parts: [{ text: `Entendido! Sou o Assistente Life OS do ${userName} conectado ao Gemini e estou pronto para gerenciar todas as suas atividades.` }] },
-        ...history.slice(-8).map((h) => ({
-          role: h.role === "assistant" ? ("model" as const) : ("user" as const),
-          parts: [{ text: h.content }],
-        })),
-      ],
-    });
-
-    const result = await chat.sendMessage(prompt);
-    const rawText = result.response.text();
+    if (!rawText) {
+      throw new Error("All Gemini candidate models failed to respond.");
+    }
 
     // Check if Gemini returned an action block [ACTION:{...}]
     let actionData: any = null;
