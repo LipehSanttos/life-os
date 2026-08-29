@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   BookOpen,
   Plus,
@@ -7,12 +7,15 @@ import {
   Search,
   Sparkles,
   Image as ImageIcon,
+  UploadCloud,
   CheckCircle2,
   Trash2,
   Edit3,
   BookmarkPlus,
   ExternalLink,
   BookCopy,
+  Link as LinkIcon,
+  X,
 } from "lucide-react";
 import { BookData } from "@/types";
 import { toast } from "sonner";
@@ -29,11 +32,16 @@ export default function ReadingPage() {
   const [author, setAuthor] = useState("");
   const [isbn, setIsbn] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
+  const [coverTab, setCoverTab] = useState<"upload" | "url">("upload");
   const [totalPages, setTotalPages] = useState(250);
   const [currentPage, setCurrentPage] = useState(0);
 
   const [loading, setLoading] = useState(false);
   const [searchingIsbn, setSearchingIsbn] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   const loadData = async () => {
     try {
@@ -76,6 +84,57 @@ export default function ReadingPage() {
       toast.error("Erro ao buscar dados do livro.");
     } finally {
       setSearchingIsbn(false);
+    }
+  };
+
+  // Upload image file from computer
+  const handleFileUpload = async (file: File) => {
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor, selecione um arquivo de imagem válido (PNG, JPG, WEBP).");
+      return;
+    }
+
+    setUploadingImage(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        // Fallback to FileReader base64 if server upload encounters issue
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            setCoverUrl(e.target.result as string);
+            toast.success("Imagem carregada com sucesso!");
+          }
+        };
+        reader.readAsDataURL(file);
+        return;
+      }
+
+      setCoverUrl(data.url);
+      toast.success("Capa enviada com sucesso! 🖼️");
+    } catch (err: any) {
+      // Fallback to base64 Data URL
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        if (e.target?.result) {
+          setCoverUrl(e.target.result as string);
+          toast.success("Imagem carregada localmente!");
+        }
+      };
+      reader.readAsDataURL(file);
+    } finally {
+      setUploadingImage(false);
     }
   };
 
@@ -188,6 +247,7 @@ export default function ReadingPage() {
     setAuthor(book.author || "");
     setIsbn(book.isbn || "");
     setCoverUrl(book.coverUrl || "");
+    setCoverTab("upload");
     setTotalPages(book.totalPages);
     setCurrentPage(book.currentPage);
     setEditModalOpen(true);
@@ -199,6 +259,7 @@ export default function ReadingPage() {
     setAuthor("");
     setIsbn("");
     setCoverUrl("");
+    setCoverTab("upload");
     setTotalPages(250);
     setCurrentPage(0);
   };
@@ -216,7 +277,7 @@ export default function ReadingPage() {
             Meus Livros & Leituras
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1.5 font-medium">
-            Busque livros por ISBN ou adicione suas próprias capas e acompanhe seu progresso diário.
+            Busque por ISBN, envie a capa do seu computador ou cole um link e acompanhe seu progresso.
           </p>
         </div>
 
@@ -240,7 +301,7 @@ export default function ReadingPage() {
           </div>
           <h3 className="text-lg font-black text-foreground">Sua estante está vazia</h3>
           <p className="text-sm text-muted-foreground max-w-md mx-auto">
-            Adicione seus livros favoritos informando o ISBN ou buscando a capa na internet para começar seu registro de leitura.
+            Adicione seus livros favoritos informando o ISBN, enviando a imagem da capa do computador ou digitando os dados manualmente.
           </p>
           <button
             onClick={() => {
@@ -265,7 +326,7 @@ export default function ReadingPage() {
               >
                 {/* Book Cover + Info */}
                 <div className="space-y-3.5">
-                  <div className="relative w-full h-56 rounded-2xl overflow-hidden bg-muted/60 border border-border/50 flex items-center justify-center shadow-inner group-hover:shadow-md transition-all">
+                  <div className="relative w-full h-60 rounded-2xl overflow-hidden bg-muted/60 border border-border/50 flex items-center justify-center shadow-inner group-hover:shadow-md transition-all">
                     {book.coverUrl ? (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img
@@ -273,7 +334,6 @@ export default function ReadingPage() {
                         alt={book.title}
                         className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
                         onError={(e) => {
-                          // Fallback to placeholder icon if image link fails
                           (e.target as HTMLElement).style.display = "none";
                         }}
                       />
@@ -297,7 +357,7 @@ export default function ReadingPage() {
                       </span>
                     </div>
 
-                    {/* Edit/Delete Hover Actions */}
+                    {/* Edit/Delete Actions */}
                     <div className="absolute bottom-2 right-2 flex gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 backdrop-blur-md p-1 rounded-xl">
                       <button
                         onClick={() => openEditModal(book)}
@@ -385,7 +445,7 @@ export default function ReadingPage() {
                 <div>
                   <h2 className="text-xl font-black text-foreground">Adicionar Novo Livro</h2>
                   <p className="text-xs text-muted-foreground font-medium">
-                    Busque automaticamente pelo ISBN ou preencha manualmente
+                    Busque por ISBN, envie a capa do computador ou cole um link
                   </p>
                 </div>
               </div>
@@ -459,7 +519,7 @@ export default function ReadingPage() {
                   />
                 </div>
 
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block text-xs font-bold text-foreground mb-1.5">Total de Páginas</label>
                   <input
                     type="number"
@@ -471,44 +531,99 @@ export default function ReadingPage() {
                     required
                   />
                 </div>
-
-                <div>
-                  <label className="block text-xs font-bold text-foreground mb-1.5 flex items-center gap-1.5">
-                    <ImageIcon className="w-3.5 h-3.5 text-primary" />
-                    <span>Link da Imagem da Capa</span>
-                  </label>
-                  <input
-                    type="url"
-                    value={coverUrl}
-                    onChange={(e) => setCoverUrl(e.target.value)}
-                    placeholder="https://exemplo.com/capa.jpg"
-                    className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-medium"
-                  />
-                </div>
               </div>
 
-              {/* Cover Preview */}
-              {coverUrl && (
-                <div className="p-3 rounded-2xl border border-border/60 bg-muted/30 flex items-center gap-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={coverUrl}
-                    alt="Prévia da Capa"
-                    className="w-14 h-20 object-cover rounded-lg border border-border/70 shadow-sm"
-                  />
-                  <div className="flex-1 text-xs text-muted-foreground">
-                    <span className="font-bold text-foreground block">Prévia da Capa Selecionada</span>
-                    <span className="text-[11px] truncate block max-w-xs">{coverUrl}</span>
+              {/* Cover Image Selector (Upload File or Paste URL) */}
+              <div className="space-y-2 pt-2 border-t border-border/40">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-primary" />
+                    <span>Capa do Livro</span>
+                  </label>
+
+                  <div className="flex items-center gap-1 p-0.5 rounded-lg bg-muted/60 border border-border/50 text-[11px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setCoverTab("upload")}
+                      className={`px-2.5 py-1 rounded-md transition-all ${
+                        coverTab === "upload" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      📁 Enviar Imagem
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCoverTab("url")}
+                      className={`px-2.5 py-1 rounded-md transition-all ${
+                        coverTab === "url" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      🔗 Colar Link
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setCoverUrl("")}
-                    className="text-xs text-rose-400 hover:underline font-bold"
-                  >
-                    Remover
-                  </button>
                 </div>
-              )}
+
+                {coverTab === "upload" ? (
+                  <div>
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file);
+                      }}
+                    />
+                    <div
+                      onClick={() => fileInputRef.current?.click()}
+                      className="p-4 rounded-2xl border-2 border-dashed border-border/80 hover:border-primary/60 bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer flex flex-col items-center justify-center text-center space-y-1.5"
+                    >
+                      <UploadCloud className="w-6 h-6 text-primary animate-bounce" />
+                      <span className="text-xs font-bold text-foreground">
+                        {uploadingImage ? "Enviando arquivo..." : "Clique para selecionar uma imagem do seu computador"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Suporta PNG, JPG, WEBP até 10MB
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      type="url"
+                      value={coverUrl}
+                      onChange={(e) => setCoverUrl(e.target.value)}
+                      placeholder="Cole a URL da imagem (ex: https://exemplo.com/capa.jpg)"
+                      className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                    />
+                  </div>
+                )}
+
+                {/* Cover Live Preview */}
+                {coverUrl && (
+                  <div className="p-3 rounded-2xl border border-border/60 bg-muted/30 flex items-center gap-4 mt-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={coverUrl}
+                      alt="Prévia da Capa"
+                      className="w-14 h-20 object-cover rounded-lg border border-border/70 shadow-sm"
+                    />
+                    <div className="flex-1 text-xs text-muted-foreground">
+                      <span className="font-bold text-foreground block">Capa Selecionada com Sucesso</span>
+                      <span className="text-[11px] truncate block max-w-xs">{coverUrl}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCoverUrl("")}
+                      className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/15 transition-colors"
+                      title="Remover capa"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/40">
                 <button
@@ -520,7 +635,7 @@ export default function ReadingPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || !title.trim()}
+                  disabled={loading || !title.trim() || uploadingImage}
                   className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs shadow-md shadow-primary/25 disabled:opacity-50"
                 >
                   {loading ? "Salvando..." : "Salvar Livro"}
@@ -607,44 +722,99 @@ export default function ReadingPage() {
                     required
                   />
                 </div>
-
-                <div className="sm:col-span-2">
-                  <label className="block text-xs font-bold text-foreground mb-1.5 flex items-center gap-1.5">
-                    <ImageIcon className="w-3.5 h-3.5 text-primary" />
-                    <span>Link da Imagem da Capa</span>
-                  </label>
-                  <input
-                    type="url"
-                    value={coverUrl}
-                    onChange={(e) => setCoverUrl(e.target.value)}
-                    placeholder="https://exemplo.com/capa.jpg"
-                    className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-medium"
-                  />
-                </div>
               </div>
 
-              {/* Cover Preview */}
-              {coverUrl && (
-                <div className="p-3 rounded-2xl border border-border/60 bg-muted/30 flex items-center gap-4">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={coverUrl}
-                    alt="Prévia da Capa"
-                    className="w-14 h-20 object-cover rounded-lg border border-border/70 shadow-sm"
-                  />
-                  <div className="flex-1 text-xs text-muted-foreground">
-                    <span className="font-bold text-foreground block">Prévia da Capa Selecionada</span>
-                    <span className="text-[11px] truncate block max-w-xs">{coverUrl}</span>
+              {/* Cover Image Selector in Edit Modal */}
+              <div className="space-y-2 pt-2 border-t border-border/40">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-foreground flex items-center gap-1.5">
+                    <ImageIcon className="w-3.5 h-3.5 text-primary" />
+                    <span>Alterar Capa do Livro</span>
+                  </label>
+
+                  <div className="flex items-center gap-1 p-0.5 rounded-lg bg-muted/60 border border-border/50 text-[11px] font-bold">
+                    <button
+                      type="button"
+                      onClick={() => setCoverTab("upload")}
+                      className={`px-2.5 py-1 rounded-md transition-all ${
+                        coverTab === "upload" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      📁 Enviar Imagem
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setCoverTab("url")}
+                      className={`px-2.5 py-1 rounded-md transition-all ${
+                        coverTab === "url" ? "bg-card text-foreground shadow-xs" : "text-muted-foreground hover:text-foreground"
+                      }`}
+                    >
+                      🔗 Colar Link
+                    </button>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => setCoverUrl("")}
-                    className="text-xs text-rose-400 hover:underline font-bold"
-                  >
-                    Remover
-                  </button>
                 </div>
-              )}
+
+                {coverTab === "upload" ? (
+                  <div>
+                    <input
+                      ref={editFileInputRef}
+                      type="file"
+                      accept="image/png,image/jpeg,image/webp,image/gif"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleFileUpload(file);
+                      }}
+                    />
+                    <div
+                      onClick={() => editFileInputRef.current?.click()}
+                      className="p-4 rounded-2xl border-2 border-dashed border-border/80 hover:border-primary/60 bg-muted/20 hover:bg-muted/40 transition-all cursor-pointer flex flex-col items-center justify-center text-center space-y-1.5"
+                    >
+                      <UploadCloud className="w-6 h-6 text-primary animate-bounce" />
+                      <span className="text-xs font-bold text-foreground">
+                        {uploadingImage ? "Enviando arquivo..." : "Clique para selecionar nova imagem do computador"}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        Suporta PNG, JPG, WEBP até 10MB
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div>
+                    <input
+                      type="url"
+                      value={coverUrl}
+                      onChange={(e) => setCoverUrl(e.target.value)}
+                      placeholder="Cole a URL da imagem (ex: https://exemplo.com/capa.jpg)"
+                      className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                    />
+                  </div>
+                )}
+
+                {/* Cover Live Preview */}
+                {coverUrl && (
+                  <div className="p-3 rounded-2xl border border-border/60 bg-muted/30 flex items-center gap-4 mt-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={coverUrl}
+                      alt="Prévia da Capa"
+                      className="w-14 h-20 object-cover rounded-lg border border-border/70 shadow-sm"
+                    />
+                    <div className="flex-1 text-xs text-muted-foreground">
+                      <span className="font-bold text-foreground block">Capa Atual</span>
+                      <span className="text-[11px] truncate block max-w-xs">{coverUrl}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setCoverUrl("")}
+                      className="p-1.5 rounded-lg text-rose-400 hover:bg-rose-500/15 transition-colors"
+                      title="Remover capa"
+                    >
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                )}
+              </div>
 
               <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/40">
                 <button
@@ -656,7 +826,7 @@ export default function ReadingPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={loading || !title.trim()}
+                  disabled={loading || !title.trim() || uploadingImage}
                   className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs shadow-md shadow-primary/25 disabled:opacity-50"
                 >
                   {loading ? "Salvando..." : "Salvar Alterações"}
