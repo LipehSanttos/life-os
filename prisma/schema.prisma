@@ -32,6 +32,8 @@ model UserSettings {
   autoConfirmAiActions  Boolean  @default(false)
   notificationsEnabled  Boolean  @default(true)
   geminiApiKey          String?
+  groqApiKey            String?
+  aiProvider            String   @default("HYBRID") // "GEMINI" | "GROQ" | "HYBRID"
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
 }

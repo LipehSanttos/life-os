@@ -1,13 +1,13 @@
 /**
  * @file route.ts (API /api/chat)
  * @description Endpoint central para envio de mensagens e histórico de conversas do Chat com IA.
- * Integra o Google Gemini com injeção dinâmica de contexto pessoal e isolamento por `userId`.
+ * Suporta múltiplos provedores (Google Gemini 3.6 Flash & Groq LLaMA 3.3 70B) com isolamento por `userId`.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
-import { processAIChat } from "@/lib/ai/gemini";
+import { processUnifiedAIChat } from "@/lib/ai";
 
 /**
  * GET /api/chat
@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
 
 /**
  * POST /api/chat
- * Envia uma mensagem para o assistente de IA, processa a intenção semântica e persiste a resposta.
+ * Envia uma mensagem para a IA unificada (Gemini / Groq / Fallback NLP) e persiste a resposta.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -102,8 +102,8 @@ export async function POST(req: NextRequest) {
       take: 10,
     });
 
-    // Processa a mensagem com o Google Gemini (isolado estritamente para user.id)
-    const aiResult = await processAIChat(
+    // Processa a mensagem com a IA Unificada (Gemini + Groq + NLP) isolada para o usuário atual
+    const aiResult = await processUnifiedAIChat(
       message.trim(),
       history.map((h) => ({ role: h.role as any, content: h.content })),
       user.id

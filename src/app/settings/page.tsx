@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Settings, User, Moon, Sun, Sparkles, Key, Lock, Eye, EyeOff, ShieldAlert, CheckCircle2, ShieldCheck } from "lucide-react";
+import { Settings, User, Moon, Sun, Sparkles, Key, Lock, Eye, EyeOff, ShieldAlert, CheckCircle2, ShieldCheck, Cpu, Zap } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
@@ -12,6 +12,8 @@ export default function SettingsPage() {
   const [email, setEmail] = useState("eduardo.felipe@lifeos.com");
   const [autoConfirmAiActions, setAutoConfirmAiActions] = useState(false);
   const [geminiApiKey, setGeminiApiKey] = useState("");
+  const [groqApiKey, setGroqApiKey] = useState("");
+  const [aiProvider, setAiProvider] = useState<"HYBRID" | "GEMINI" | "GROQ">("HYBRID");
   const [loadingProfile, setLoadingProfile] = useState(false);
 
   // Password change state
@@ -32,6 +34,8 @@ export default function SettingsPage() {
           setEmail(data.email || "eduardo.felipe@lifeos.com");
           setAutoConfirmAiActions(Boolean(data.autoConfirmAiActions));
           setGeminiApiKey(data.geminiApiKey || "");
+          setGroqApiKey(data.groqApiKey || "");
+          setAiProvider(data.aiProvider || "HYBRID");
         }
       });
   }, []);
@@ -43,9 +47,16 @@ export default function SettingsPage() {
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name, email, autoConfirmAiActions, geminiApiKey }),
+        body: JSON.stringify({
+          name,
+          email,
+          autoConfirmAiActions,
+          geminiApiKey,
+          groqApiKey,
+          aiProvider,
+        }),
       });
-      if (res.ok) toast.success("Configurações do perfil salvas com sucesso!");
+      if (res.ok) toast.success("Configurações e chaves de IA salvas com sucesso!");
     } catch (e) {
       toast.error("Erro ao salvar configurações.");
     } finally {
@@ -102,17 +113,17 @@ export default function SettingsPage() {
       <div className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs">
         <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider mb-1.5">
           <Settings className="w-4 h-4" />
-          <span>Preferências & Segurança</span>
+          <span>Preferências & Inteligência Artificial</span>
         </div>
         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
           Configurações
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium">
-          Personalize seu perfil, altere sua senha de acesso e configure inteligência artificial.
+          Personalize seu perfil, altere sua senha e configure os motores de IA (Google Gemini e Groq).
         </p>
       </div>
 
-      {/* Security & Password Section (Primeiro Acesso / Alterar Senha) */}
+      {/* Security & Password Section */}
       <div className="p-6 rounded-3xl border-2 border-primary/30 bg-card/90 backdrop-blur-xl shadow-lg space-y-5">
         <div className="flex items-center justify-between pb-3 border-b border-border/40">
           <div className="flex items-center gap-2.5">
@@ -122,24 +133,13 @@ export default function SettingsPage() {
             <div>
               <h3 className="text-sm font-bold text-foreground">Segurança & Alteração de Senha</h3>
               <p className="text-xs text-muted-foreground font-medium">
-                Altere sua senha de acesso a qualquer momento ou no seu primeiro acesso
+                Altere sua senha de acesso a qualquer momento
               </p>
             </div>
           </div>
           <span className="text-[10px] font-bold uppercase px-2.5 py-1 rounded-full bg-primary/15 text-primary border border-primary/25">
             Acesso Seguro
           </span>
-        </div>
-
-        {/* Informative Security Notice Card */}
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25 flex items-start gap-3">
-          <ShieldAlert className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-          <div className="text-xs space-y-0.5">
-            <span className="font-bold text-amber-400 block">Segurança da Conta</span>
-            <p className="text-muted-foreground font-medium leading-relaxed">
-              No seu primeiro acesso ou sempre que desejar, altere sua senha para garantir a privacidade dos seus dados. Uma vez alterada, sua senha anterior deixará de funcionar imediatamente.
-            </p>
-          </div>
         </div>
 
         <form onSubmit={handleChangePassword} className="space-y-4">
@@ -299,15 +299,95 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* AI & Gemini Settings */}
+        {/* AI Engine & Providers (Gemini & Groq) */}
         <div className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-4">
           <div className="flex items-center gap-2 pb-2 border-b border-border/40">
             <Sparkles className="w-4 h-4 text-indigo-400" />
             <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Inteligência Artificial & Gemini
+              Inteligência Artificial & Motores de Inferência
             </h3>
           </div>
-          <div className="space-y-3">
+
+          {/* AI Provider Selector Cards */}
+          <div className="space-y-2">
+            <label className="block text-xs font-bold text-foreground">Motor de IA Preferencial</label>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <button
+                type="button"
+                onClick={() => setAiProvider("HYBRID")}
+                className={`p-3.5 rounded-2xl border text-left transition-all ${
+                  aiProvider === "HYBRID"
+                    ? "bg-primary/15 border-primary ring-2 ring-primary/20"
+                    : "bg-card/70 border-border/60 hover:bg-muted"
+                }`}
+              >
+                <div className="flex items-center gap-2 text-primary font-bold text-xs mb-1">
+                  <Zap className="w-4 h-4" />
+                  <span>Híbrido Inteligente</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-medium">
+                  Alterna automaticamente entre Gemini e Groq com máxima disponibilidade.
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAiProvider("GROQ")}
+                className={`p-3.5 rounded-2xl border text-left transition-all ${
+                  aiProvider === "GROQ"
+                    ? "bg-primary/15 border-primary ring-2 ring-primary/20"
+                    : "bg-card/70 border-border/60 hover:bg-muted"
+                }`}
+              >
+                <div className="flex items-center gap-2 text-amber-500 font-bold text-xs mb-1">
+                  <Cpu className="w-4 h-4" />
+                  <span>Groq (LLaMA 3.3)</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-medium">
+                  Velocidade ultra-rápida de inferência em LPUs (70B / 8B).
+                </p>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setAiProvider("GEMINI")}
+                className={`p-3.5 rounded-2xl border text-left transition-all ${
+                  aiProvider === "GEMINI"
+                    ? "bg-primary/15 border-primary ring-2 ring-primary/20"
+                    : "bg-card/70 border-border/60 hover:bg-muted"
+                }`}
+              >
+                <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs mb-1">
+                  <Sparkles className="w-4 h-4" />
+                  <span>Google Gemini</span>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-medium">
+                  Raciocínio profundo com modelo Gemini 3.6 Flash.
+                </p>
+              </button>
+            </div>
+          </div>
+
+          <div className="space-y-4 pt-2">
+            {/* Groq API Key Input */}
+            <div>
+              <label className="block text-xs font-bold text-foreground mb-1.5 flex items-center gap-1.5">
+                <Cpu className="w-3.5 h-3.5 text-amber-500" />
+                <span>Chave de API Groq (Opcional - LLaMA 3.3 70B / 3.1 8B)</span>
+              </label>
+              <input
+                type="password"
+                placeholder="gsk_..."
+                value={groqApiKey}
+                onChange={(e) => setGroqApiKey(e.target.value)}
+                className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-mono shadow-xs"
+              />
+              <p className="text-[11px] text-muted-foreground mt-1 font-medium">
+                Obtenha gratuitamente em <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">console.groq.com</a>.
+              </p>
+            </div>
+
+            {/* Google Gemini API Key Input */}
             <div>
               <label className="block text-xs font-bold text-foreground mb-1.5 flex items-center gap-1.5">
                 <Key className="w-3.5 h-3.5 text-primary" />
@@ -320,8 +400,8 @@ export default function SettingsPage() {
                 onChange={(e) => setGeminiApiKey(e.target.value)}
                 className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-mono shadow-xs"
               />
-              <p className="text-[11px] text-muted-foreground mt-1.5 font-medium">
-                Caso não possua uma chave, o sistema utiliza o motor inteligente NLP local em português brasileiro.
+              <p className="text-[11px] text-muted-foreground mt-1 font-medium">
+                Caso não possua chaves externas, o sistema utiliza o motor inteligente NLP local em português.
               </p>
             </div>
 
