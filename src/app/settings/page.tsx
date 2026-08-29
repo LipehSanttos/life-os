@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect } from "react";
-import { Settings, User, Moon, Sun, Sparkles, Key, Lock, Eye, EyeOff, ShieldAlert, CheckCircle2, ShieldCheck, Cpu, Zap } from "lucide-react";
+import { Settings, User, Moon, Sun, Sparkles, Key, Lock, Eye, EyeOff, ShieldAlert, CheckCircle2, ShieldCheck, Cpu, Zap, Crown } from "lucide-react";
 import { useTheme } from "next-themes";
 import { toast } from "sonner";
 
@@ -14,6 +14,7 @@ export default function SettingsPage() {
   const [geminiApiKey, setGeminiApiKey] = useState("");
   const [groqApiKey, setGroqApiKey] = useState("");
   const [aiProvider, setAiProvider] = useState<"HYBRID" | "GEMINI" | "GROQ">("HYBRID");
+  const [isAdmin, setIsAdmin] = useState(false);
   const [loadingProfile, setLoadingProfile] = useState(false);
 
   // Password change state
@@ -36,6 +37,7 @@ export default function SettingsPage() {
           setGeminiApiKey(data.geminiApiKey || "");
           setGroqApiKey(data.groqApiKey || "");
           setAiProvider(data.aiProvider || "HYBRID");
+          setIsAdmin(Boolean(data.isAdmin));
         }
       });
   }, []);
@@ -44,21 +46,34 @@ export default function SettingsPage() {
     e.preventDefault();
     setLoadingProfile(true);
     try {
+      const payload: any = {
+        name,
+        email,
+        autoConfirmAiActions,
+      };
+
+      // Apenas envia chaves de IA se for administrador
+      if (isAdmin) {
+        payload.geminiApiKey = geminiApiKey;
+        payload.groqApiKey = groqApiKey;
+        payload.aiProvider = aiProvider;
+      }
+
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name,
-          email,
-          autoConfirmAiActions,
-          geminiApiKey,
-          groqApiKey,
-          aiProvider,
-        }),
+        body: JSON.stringify(payload),
       });
-      if (res.ok) toast.success("Configurações e chaves de IA salvas com sucesso!");
-    } catch (e) {
-      toast.error("Erro ao salvar configurações.");
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || "Erro ao salvar configurações.");
+      }
+
+      toast.success("Configurações salvas com sucesso!");
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao salvar configurações.");
     } finally {
       setLoadingProfile(false);
     }
@@ -111,15 +126,23 @@ export default function SettingsPage() {
     <div className="max-w-3xl mx-auto space-y-6 pb-20">
       {/* Header */}
       <div className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs">
-        <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider mb-1.5">
-          <Settings className="w-4 h-4" />
-          <span>Preferências & Inteligência Artificial</span>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-primary font-bold text-xs uppercase tracking-wider mb-1.5">
+            <Settings className="w-4 h-4" />
+            <span>Preferências & Segurança</span>
+          </div>
+          {isAdmin && (
+            <span className="flex items-center gap-1.5 text-[11px] font-black uppercase px-3 py-1 rounded-full bg-amber-500/15 text-amber-500 border border-amber-500/30">
+              <Crown className="w-3.5 h-3.5" />
+              <span>Administrador</span>
+            </span>
+          )}
         </div>
         <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-foreground">
           Configurações
         </h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1 font-medium">
-          Personalize seu perfil, altere sua senha e configure os motores de IA (Google Gemini e Groq).
+          Personalize seu perfil, altere sua senha de acesso e visualize as configurações do sistema.
         </p>
       </div>
 
@@ -243,9 +266,9 @@ export default function SettingsPage() {
               <label className="block text-xs font-bold text-foreground mb-1.5">E-mail</label>
               <input
                 type="email"
+                disabled
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-muted/60 text-muted-foreground text-xs outline-none font-medium cursor-not-allowed"
               />
             </div>
           </div>
@@ -299,125 +322,147 @@ export default function SettingsPage() {
           </div>
         </div>
 
-        {/* AI Engine & Providers (Gemini & Groq) */}
-        <div className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-4">
-          <div className="flex items-center gap-2 pb-2 border-b border-border/40">
-            <Sparkles className="w-4 h-4 text-indigo-400" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
-              Inteligência Artificial & Motores de Inferência
-            </h3>
-          </div>
-
-          {/* AI Provider Selector Cards */}
-          <div className="space-y-2">
-            <label className="block text-xs font-bold text-foreground">Motor de IA Preferencial</label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <button
-                type="button"
-                onClick={() => setAiProvider("HYBRID")}
-                className={`p-3.5 rounded-2xl border text-left transition-all ${
-                  aiProvider === "HYBRID"
-                    ? "bg-primary/15 border-primary ring-2 ring-primary/20"
-                    : "bg-card/70 border-border/60 hover:bg-muted"
-                }`}
-              >
-                <div className="flex items-center gap-2 text-primary font-bold text-xs mb-1">
-                  <Zap className="w-4 h-4" />
-                  <span>Híbrido Inteligente</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground font-medium">
-                  Alterna automaticamente entre Gemini e Groq com máxima disponibilidade.
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAiProvider("GROQ")}
-                className={`p-3.5 rounded-2xl border text-left transition-all ${
-                  aiProvider === "GROQ"
-                    ? "bg-primary/15 border-primary ring-2 ring-primary/20"
-                    : "bg-card/70 border-border/60 hover:bg-muted"
-                }`}
-              >
-                <div className="flex items-center gap-2 text-amber-500 font-bold text-xs mb-1">
-                  <Cpu className="w-4 h-4" />
-                  <span>Groq (LLaMA 3.3)</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground font-medium">
-                  Velocidade ultra-rápida de inferência em LPUs (70B / 8B).
-                </p>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setAiProvider("GEMINI")}
-                className={`p-3.5 rounded-2xl border text-left transition-all ${
-                  aiProvider === "GEMINI"
-                    ? "bg-primary/15 border-primary ring-2 ring-primary/20"
-                    : "bg-card/70 border-border/60 hover:bg-muted"
-                }`}
-              >
-                <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs mb-1">
-                  <Sparkles className="w-4 h-4" />
-                  <span>Google Gemini</span>
-                </div>
-                <p className="text-[11px] text-muted-foreground font-medium">
-                  Raciocínio profundo com modelo Gemini 3.6 Flash.
-                </p>
-              </button>
-            </div>
-          </div>
-
-          <div className="space-y-4 pt-2">
-            {/* Groq API Key Input */}
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1.5 flex items-center gap-1.5">
-                <Cpu className="w-3.5 h-3.5 text-amber-500" />
-                <span>Chave de API Groq (Opcional - LLaMA 3.3 70B / 3.1 8B)</span>
-              </label>
-              <input
-                type="password"
-                placeholder="gsk_..."
-                value={groqApiKey}
-                onChange={(e) => setGroqApiKey(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-mono shadow-xs"
-              />
-              <p className="text-[11px] text-muted-foreground mt-1 font-medium">
-                Obtenha gratuitamente em <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">console.groq.com</a>.
-              </p>
+        {/* AI Engine & Providers - Exclusivo para ADMIN */}
+        {isAdmin ? (
+          <div className="p-6 rounded-3xl border-2 border-indigo-500/30 bg-card/85 backdrop-blur-xl shadow-md space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-border/40">
+              <div className="flex items-center gap-2">
+                <Sparkles className="w-4 h-4 text-indigo-400" />
+                <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                  Inteligência Artificial & Motores de Inferência
+                </h3>
+              </div>
+              <span className="flex items-center gap-1 text-[10px] font-bold uppercase px-2 py-0.5 rounded-md bg-amber-500/15 text-amber-400 border border-amber-500/20">
+                <Crown className="w-3 h-3" />
+                Exclusivo Admin
+              </span>
             </div>
 
-            {/* Google Gemini API Key Input */}
-            <div>
-              <label className="block text-xs font-bold text-foreground mb-1.5 flex items-center gap-1.5">
-                <Key className="w-3.5 h-3.5 text-primary" />
-                <span>Chave de API Google Gemini (Opcional)</span>
-              </label>
-              <input
-                type="password"
-                placeholder="AIzaSy..."
-                value={geminiApiKey}
-                onChange={(e) => setGeminiApiKey(e.target.value)}
-                className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-mono shadow-xs"
-              />
-              <p className="text-[11px] text-muted-foreground mt-1 font-medium">
-                Caso não possua chaves externas, o sistema utiliza o motor inteligente NLP local em português.
-              </p>
+            {/* AI Provider Selector Cards */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-foreground">Motor de IA Padrão do Sistema</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <button
+                  type="button"
+                  onClick={() => setAiProvider("HYBRID")}
+                  className={`p-3.5 rounded-2xl border text-left transition-all ${
+                    aiProvider === "HYBRID"
+                      ? "bg-primary/15 border-primary ring-2 ring-primary/20"
+                      : "bg-card/70 border-border/60 hover:bg-muted"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-primary font-bold text-xs mb-1">
+                    <Zap className="w-4 h-4" />
+                    <span>Híbrido Inteligente</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Alterna automaticamente entre Gemini e Groq com máxima disponibilidade.
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAiProvider("GROQ")}
+                  className={`p-3.5 rounded-2xl border text-left transition-all ${
+                    aiProvider === "GROQ"
+                      ? "bg-primary/15 border-primary ring-2 ring-primary/20"
+                      : "bg-card/70 border-border/60 hover:bg-muted"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-amber-500 font-bold text-xs mb-1">
+                    <Cpu className="w-4 h-4" />
+                    <span>Groq (LLaMA 3.3)</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Velocidade ultra-rápida de inferência em LPUs (70B / 8B).
+                  </p>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setAiProvider("GEMINI")}
+                  className={`p-3.5 rounded-2xl border text-left transition-all ${
+                    aiProvider === "GEMINI"
+                      ? "bg-primary/15 border-primary ring-2 ring-primary/20"
+                      : "bg-card/70 border-border/60 hover:bg-muted"
+                  }`}
+                >
+                  <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs mb-1">
+                    <Sparkles className="w-4 h-4" />
+                    <span>Google Gemini</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground font-medium">
+                    Raciocínio profundo com modelo Gemini 3.6 Flash.
+                  </p>
+                </button>
+              </div>
             </div>
 
-            <div className="pt-2">
-              <label className="flex items-center gap-3 text-xs font-semibold text-foreground cursor-pointer">
+            <div className="space-y-4 pt-2">
+              {/* Groq API Key Input */}
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1.5 flex items-center gap-1.5">
+                  <Cpu className="w-3.5 h-3.5 text-amber-500" />
+                  <span>Chave de API Groq (LLaMA 3.3 70B / 3.1 8B)</span>
+                </label>
                 <input
-                  type="checkbox"
-                  checked={autoConfirmAiActions}
-                  onChange={(e) => setAutoConfirmAiActions(e.target.checked)}
-                  className="rounded-md border text-primary focus:ring-primary w-4 h-4"
+                  type="password"
+                  placeholder="gsk_..."
+                  value={groqApiKey}
+                  onChange={(e) => setGroqApiKey(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-mono shadow-xs"
                 />
-                <span>Executar ações da IA automaticamente (sem exibir o cartão de confirmação prévia)</span>
-              </label>
+                <p className="text-[11px] text-muted-foreground mt-1 font-medium">
+                  Obtenha gratuitamente em <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-primary underline font-semibold">console.groq.com</a>.
+                </p>
+              </div>
+
+              {/* Google Gemini API Key Input */}
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1.5 flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5 text-primary" />
+                  <span>Chave de API Google Gemini</span>
+                </label>
+                <input
+                  type="password"
+                  placeholder="AIzaSy..."
+                  value={geminiApiKey}
+                  onChange={(e) => setGeminiApiKey(e.target.value)}
+                  className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-mono shadow-xs"
+                />
+                <p className="text-[11px] text-muted-foreground mt-1 font-medium">
+                  Obtenha gratuitamente em <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener noreferrer" className="text-primary underline font-semibold">aistudio.google.com</a>.
+                </p>
+              </div>
+
+              <div className="pt-2">
+                <label className="flex items-center gap-3 text-xs font-semibold text-foreground cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={autoConfirmAiActions}
+                    onChange={(e) => setAutoConfirmAiActions(e.target.checked)}
+                    className="rounded-md border text-primary focus:ring-primary w-4 h-4"
+                  />
+                  <span>Executar ações da IA automaticamente (sem exibir o cartão de confirmação prévia)</span>
+                </label>
+              </div>
             </div>
           </div>
-        </div>
+        ) : (
+          <div className="p-6 rounded-3xl border border-border/70 bg-card/60 backdrop-blur-xl shadow-xs flex items-start gap-3.5">
+            <div className="p-2 rounded-xl bg-indigo-500/10 text-indigo-400 flex-shrink-0 mt-0.5">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div className="space-y-1">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
+                Inteligência Artificial Ativa
+              </h3>
+              <p className="text-xs text-muted-foreground font-medium leading-relaxed">
+                Os motores de IA e chaves de API são gerenciados centralmente pelo Administrador do sistema. Você pode utilizar o Chat normalmente para organizar suas tarefas, estudos e finanças.
+              </p>
+            </div>
+          </div>
+        )}
 
         <div className="flex justify-end">
           <button
