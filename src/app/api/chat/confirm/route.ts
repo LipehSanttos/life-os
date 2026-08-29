@@ -1,8 +1,18 @@
+/**
+ * @file route.ts (API /api/chat/confirm)
+ * @description Endpoint de confirmação ou cancelamento de ações propostas pela IA no chat.
+ * Executa as ferramentas correspondentes no banco de dados SQLite somente após a aprovação explícita do usuário.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { executeTool } from "@/lib/ai/tools";
 
+/**
+ * POST /api/chat/confirm
+ * Executa ou descarta uma ação pendente emitida no chat (criação de tarefa, conta ou progresso).
+ */
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -17,6 +27,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "O ID da mensagem é obrigatório." }, { status: 400 });
     }
 
+    // Se o usuário cancelou a ação no cartão
     if (!confirmed) {
       await prisma.chatMessage.update({
         where: { id: messageId },
@@ -28,6 +39,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: "Ação cancelada." });
     }
 
+    // Se confirmada, despacha para o motor de ferramentas
     let resultMessage = "Ação executada com sucesso!";
     if (action.type === "CREATE_TASK") {
       const res = await executeTool("create_task", action.payload, user.id);
@@ -46,6 +58,7 @@ export async function POST(req: NextRequest) {
       resultMessage = res.message || resultMessage;
     }
 
+    // Atualiza a mensagem no chat com o indicador de sucesso
     await prisma.chatMessage.update({
       where: { id: messageId },
       data: {

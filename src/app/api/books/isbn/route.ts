@@ -1,6 +1,17 @@
+/**
+ * @file route.ts (API /api/books/isbn)
+ * @description Serviço de busca automática de metadados bibliográficos por código ISBN ou título.
+ * Integra Google Books API com fallback transparente para a Open Library API,
+ * recuperando título, autor, quantidade total de páginas e capa em alta resolução.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 
+/**
+ * GET /api/books/isbn?isbn=9788539004119
+ * Realiza consulta externa de metadados de livros para autopreenchimento no Life OS.
+ */
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -16,7 +27,7 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: "Informe o código ISBN ou título para busca." }, { status: 400 });
     }
 
-    // 1. Try Google Books API
+    // 1. Consulta inicial na Google Books API
     try {
       const isDigits = /^\d{9}[\dXx]|\d{13}$/.test(cleanQuery);
       const searchUrl = isDigits
@@ -33,7 +44,7 @@ export async function GET(req: NextRequest) {
             cover = cover.replace("http://", "https://");
           }
 
-          // Extract ISBN
+          // Extração do ISBN 13 ou 10
           let foundIsbn = cleanQuery;
           if (info.industryIdentifiers) {
             const isbn13 = info.industryIdentifiers.find((i: any) => i.type === "ISBN_13");
@@ -55,10 +66,10 @@ export async function GET(req: NextRequest) {
         }
       }
     } catch (gErr) {
-      console.warn("Google Books API lookup failed, trying Open Library:", gErr);
+      console.warn("Falha na consulta do Google Books, tentando Open Library:", gErr);
     }
 
-    // 2. Fallback: Open Library API
+    // 2. Fallback: Consulta na Open Library API
     try {
       const olUrl = `https://openlibrary.org/api/books?bibkeys=ISBN:${cleanQuery}&format=json&jscmd=data`;
       const olRes = await fetch(olUrl);
@@ -82,7 +93,7 @@ export async function GET(req: NextRequest) {
         }
       }
     } catch (olErr) {
-      console.warn("Open Library lookup failed:", olErr);
+      console.warn("Falha na consulta da Open Library:", olErr);
     }
 
     return NextResponse.json(

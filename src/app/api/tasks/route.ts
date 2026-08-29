@@ -1,8 +1,19 @@
+/**
+ * @file route.ts (API /api/tasks)
+ * @description Endpoint REST para consulta e criação de tarefas.
+ * Implementa isolamento estrito de dados por `userId`, filtros por status, prioridade,
+ * categorias, projetos e janelas temporais ("today", "upcoming7", "overdue").
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { addDays, startOfDay, endOfDay } from "date-fns";
 
+/**
+ * GET /api/tasks
+ * Lista todas as tarefas do usuário autenticado aplicando filtros opcionais de busca e tempo.
+ */
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -21,7 +32,7 @@ export async function GET(req: NextRequest) {
     const search = searchParams.get("search");
 
     const now = new Date();
-    // Strict user isolation
+    // Cláusula de isolamento estrito por usuário
     const whereClause: any = { userId: user.id };
 
     if (status) whereClause.status = status;
@@ -32,6 +43,7 @@ export async function GET(req: NextRequest) {
     if (isInbox === "true") whereClause.isInbox = true;
     else if (isInbox === "false") whereClause.isInbox = false;
 
+    // Busca textual por título, descrição, matéria acadêmica ou cliente
     if (search) {
       whereClause.AND = [
         {
@@ -45,6 +57,7 @@ export async function GET(req: NextRequest) {
       ];
     }
 
+    // Filtros de janelas temporais
     if (timeFrame === "today") {
       whereClause.dueDate = { gte: startOfDay(now), lte: endOfDay(now) };
     } else if (timeFrame === "upcoming3") {
@@ -77,6 +90,10 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/**
+ * POST /api/tasks
+ * Cadastra uma nova tarefa vinculada ao usuário autenticado com suporte a subtarefas.
+ */
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();

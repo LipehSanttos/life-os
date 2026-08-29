@@ -1,14 +1,28 @@
+/**
+ * @file tools.ts
+ * @description Motor de execução de ações e ferramentas (Function Calling) acionado pelo Chat com IA.
+ * Executa mutações persistentes no banco de dados SQLite com garantia de isolamento por `userId`.
+ */
+
 import { prisma } from "@/lib/db";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { addDays } from "date-fns";
 import { extractCleanTaskTitleAndDescription } from "./sanitizer";
 
+/**
+ * Executa uma ferramenta solicitada pela IA ou confirmada pelo usuário no chat.
+ *
+ * @param name Nome da ferramenta ("create_task", "update_task_status", "register_financial_bill", "update_reading_progress", "create_project")
+ * @param args Argumentos específicos e payload da ferramenta
+ * @param userId ID do usuário autenticado no Life OS
+ * @returns Objeto com status de sucesso, mensagem e dados da entidade persistida
+ */
 export async function executeTool(name: string, args: any, userId?: string) {
   const now = new Date();
 
   switch (name) {
+    /** Criação de nova tarefa com sanitização semântica de título */
     case "create_task": {
-      // Guardrail: Sanitize title to ensure it's never the full prompt
       const sanitized = extractCleanTaskTitleAndDescription(args.title || "Nova Tarefa");
       const finalTitle = sanitized.cleanTitle;
       const finalDescription = args.description || sanitized.description || null;
@@ -72,6 +86,7 @@ export async function executeTool(name: string, args: any, userId?: string) {
       };
     }
 
+    /** Atualização do status de uma tarefa (ex: COMPLETED) */
     case "update_task_status": {
       const task = await prisma.task.update({
         where: { id: args.taskId },
@@ -87,6 +102,7 @@ export async function executeTool(name: string, args: any, userId?: string) {
       };
     }
 
+    /** Registro de nova conta a pagar no módulo financeiro */
     case "register_financial_bill": {
       const bill = await prisma.financialReminder.create({
         data: {
@@ -109,6 +125,7 @@ export async function executeTool(name: string, args: any, userId?: string) {
       };
     }
 
+    /** Atualização do progresso de páginas lidas em um livro */
     case "update_reading_progress": {
       let book;
       if (args.bookId) {
@@ -146,6 +163,7 @@ export async function executeTool(name: string, args: any, userId?: string) {
       };
     }
 
+    /** Criação de um novo projeto */
     case "create_project": {
       const project = await prisma.project.create({
         data: {

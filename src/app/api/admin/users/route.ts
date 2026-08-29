@@ -1,7 +1,18 @@
+/**
+ * @file route.ts (API /api/admin/users)
+ * @description Gestão administrativa de usuários: listagem e criação de novos perfis.
+ * Protegido exclusivamente para usuários com papel `ADMIN`. Garante que novas contas
+ * iniciem com perfil 100% novo e limpo (zero registros vinculados).
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin, hashPassword, isValidUsernameOrEmail } from "@/lib/auth";
 
+/**
+ * GET /api/admin/users
+ * Lista todos os usuários cadastrados na plataforma (restrito a ADMIN).
+ */
 export async function GET() {
   try {
     const admin = await requireAdmin();
@@ -34,6 +45,10 @@ export async function GET() {
   }
 }
 
+/**
+ * POST /api/admin/users
+ * Cria um novo perfil de usuário com validação de formato de login e senha criptografada.
+ */
 export async function POST(req: NextRequest) {
   try {
     const admin = await requireAdmin();
@@ -77,7 +92,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Create fresh new user with ZERO records
+    // Cria o usuário completamente limpo (sem nenhuma tarefa pré-existente)
     const newUser = await prisma.user.create({
       data: {
         name: name.trim(),

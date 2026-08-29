@@ -1,7 +1,17 @@
+/**
+ * @file route.ts (API /api/admin/users/[id])
+ * @description Operações administrativas sobre um usuário específico: atualização de nome,
+ * alteração de papel (ADMIN/USER), redefinição forçada de senha e exclusão permanente de conta.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin, hashPassword } from "@/lib/auth";
 
+/**
+ * PATCH /api/admin/users/[id]
+ * Atualiza dados de cadastro, permissões ou senha do usuário selecionado.
+ */
 export async function PATCH(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -44,6 +54,7 @@ export async function PATCH(
       }
     }
 
+    // Regra de segurança: Não permite ao administrador revogar seu próprio papel de ADMIN
     if (role && (role === "ADMIN" || role === "USER")) {
       if (existing.id === admin.id && role !== "ADMIN") {
         return NextResponse.json(
@@ -87,6 +98,10 @@ export async function PATCH(
   }
 }
 
+/**
+ * DELETE /api/admin/users/[id]
+ * Exclui permanentemente um usuário da plataforma (impede autoexclusão de conta).
+ */
 export async function DELETE(
   req: NextRequest,
   { params }: { params: { id: string } }
@@ -102,6 +117,7 @@ export async function DELETE(
 
     const { id } = params;
 
+    // Regra de segurança: O administrador não pode deletar a si mesmo
     if (id === admin.id) {
       return NextResponse.json(
         { error: "Você não pode excluir sua própria conta de administrador." },

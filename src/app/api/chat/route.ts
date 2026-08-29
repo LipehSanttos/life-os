@@ -1,8 +1,18 @@
+/**
+ * @file route.ts (API /api/chat)
+ * @description Endpoint central para envio de mensagens e histórico de conversas do Chat com IA.
+ * Integra o Google Gemini com injeção dinâmica de contexto pessoal e isolamento por `userId`.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { processAIChat } from "@/lib/ai/gemini";
 
+/**
+ * GET /api/chat
+ * Recupera as sessões de chat ou as mensagens de uma sessão específica.
+ */
 export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -11,6 +21,7 @@ export async function GET(req: NextRequest) {
     const { searchParams } = new URL(req.url);
     const sessionId = searchParams.get("sessionId");
 
+    // Retorna as mensagens da sessão solicitada
     if (sessionId) {
       const messages = await prisma.chatMessage.findMany({
         where: { sessionId, session: { userId: user.id } },
@@ -24,16 +35,17 @@ export async function GET(req: NextRequest) {
       );
     }
 
+    // Lista todas as sessões de conversa do usuário
     let sessions = await prisma.chatSession.findMany({
       where: { userId: user.id },
       orderBy: { updatedAt: "desc" },
     });
 
+    // Se o usuário ainda não tiver nenhuma sessão, cria a conversa padrão de boas-vindas
     if (sessions.length === 0) {
       const newSession = await prisma.chatSession.create({
         data: { title: "Conversa Principal", userId: user.id },
       });
-      // Initial welcome message
       await prisma.chatMessage.create({
         data: {
           sessionId: newSession.id,
@@ -50,6 +62,10 @@ export async function GET(req: NextRequest) {
   }
 }
 
+/**
+ * POST /api/chat
+ * Envia uma mensagem para o assistente de IA, processa a intenção semântica e persiste a resposta.
+ */
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -70,7 +86,7 @@ export async function POST(req: NextRequest) {
       sessionId = newSession.id;
     }
 
-    // Save user message
+    // Salva a mensagem do usuário
     await prisma.chatMessage.create({
       data: {
         sessionId,
@@ -79,21 +95,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Load recent history
+    // Carrega o histórico recente para manter a coerência do diálogo
     const history = await prisma.chatMessage.findMany({
       where: { sessionId },
       orderBy: { createdAt: "asc" },
       take: 10,
     });
 
-    // Process with Gemini AI strictly scoped to user.id
+    // Processa a mensagem com o Google Gemini (isolado estritamente para user.id)
     const aiResult = await processAIChat(
       message.trim(),
       history.map((h) => ({ role: h.role as any, content: h.content })),
       user.id
     );
 
-    // Save AI response
+    // Salva a resposta do assistente e a ação pendente de confirmação (se houver)
     const assistantMsg = await prisma.chatMessage.create({
       data: {
         sessionId,

@@ -1,14 +1,32 @@
 /**
- * Smart Sanitizer for Task Titles and Descriptions
- * Extracts only the clean core action for the title (max 5-7 words)
- * and moves secondary explanations, dates, and preambles to description.
+ * @file sanitizer.ts
+ * @description Módulo de higienização semântica de linguagem natural.
+ * Responsável por extrair o núcleo da ação solicitada pelo usuário, gerando títulos curtos,
+ * profissionais e limpos (4 a 6 palavras), separando cláusulas temporais e notas explicativas.
  */
-export function extractCleanTaskTitleAndDescription(rawText: string): {
+
+/**
+ * Interface com os dados extraídos da mensagem do usuário
+ */
+export interface CleanTaskExtraction {
+  /** Título conciso da tarefa (ex: "Levar o Rex ao Veterinário") */
   cleanTitle: string;
+  /** Detalhes explicativos ou notas (ex: "Vacina de raiva para o Rex") */
   description: string;
+  /** Horário extraído no formato "HH:mm" (ex: "14:30") */
   extractedTime?: string;
+  /** Dia da semana ou referência temporal identificada (ex: "terça-feira") */
   extractedDayOfWeek?: string;
-} {
+}
+
+/**
+ * Analisa a frase enviada pelo usuário, remove preâmbulos de conversação,
+ * cláusulas de tempo/datas e separa o objetivo principal de explicações secundárias.
+ *
+ * @param rawText Texto cru digitado pelo usuário no chat
+ * @returns Objeto com título limpo, descrição e horários identificados
+ */
+export function extractCleanTaskTitleAndDescription(rawText: string): CleanTaskExtraction {
   if (!rawText || !rawText.trim()) {
     return { cleanTitle: "Nova Atividade", description: "" };
   }
@@ -18,7 +36,7 @@ export function extractCleanTaskTitleAndDescription(rawText: string): {
   let extractedTime: string | undefined;
   let extractedDayOfWeek: string | undefined;
 
-  // 1. Extract and normalize time mentions (e.g. 14h30, 14:30, 9h, 23:59)
+  // 1. Extração e normalização de horários (ex: 14h30, 14:30, às 9h, até as 23:59)
   const timeRegex = /(?:às|as|para\s+as|para\s+às|até\s+as|até\s+às)\s*(\d{1,2})(?:[h:](\d{2})|h|\s*horas)?|\b(\d{1,2})[h:](\d{2})\b/i;
   const timeMatch = text.match(timeRegex);
   if (timeMatch) {
@@ -29,18 +47,18 @@ export function extractCleanTaskTitleAndDescription(rawText: string): {
     }
   }
 
-  // 2. Extract day of week / relative date
+  // 2. Extração de dias da semana e referências temporais relativas
   const dateKeywordsRegex = /\b(na próxima|no próximo|na proxima|no proximo|nesta|neste)?\s*(segunda(?:-feira)?|terça(?:-feira)?|terca(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|sábado|sabado|domingo|semana que vem|próxima semana|proxima semana|amanhã|amanha|hoje|depois de amanhã|depois de amanha)\b/i;
   const dateMatch = text.match(dateKeywordsRegex);
   if (dateMatch) {
     extractedDayOfWeek = dateMatch[0].trim();
   }
 
-  // 3. Remove conversational preambles
+  // 3. Remoção de preâmbulos coloquiais de conversa
   const preambleRegex = /^(?:preciso|tenho que|tenho de|me lembra de|me lembre de|lembrar de|lembrete de|agendar para mim|agendar|agende|marca aí|marca|marcar|quero que você agende|quero agendar|adiciona uma tarefa para|adicionar uma tarefa para|cria uma tarefa para|criar uma tarefa para|adicionar|adiciona|cria|criar|anota aí|anotar|não posso esquecer de|favor agendar|coloque na agenda|definir|colocar)\s+/i;
   text = text.replace(preambleRegex, "");
 
-  // 4. Remove relative date and time clauses from text
+  // 4. Remoção de termos temporais do corpo do texto
   text = text
     .replace(/\b(?:na próxima|no próximo|na proxima|no proximo|nesta|neste)\s+(?:segunda(?:-feira)?|terça(?:-feira)?|terca(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|sábado|sabado|domingo|semana)\b/gi, "")
     .replace(/\b(?:segunda(?:-feira)?|terça(?:-feira)?|terca(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|sábado|sabado|domingo)\b/gi, "")
@@ -52,14 +70,13 @@ export function extractCleanTaskTitleAndDescription(rawText: string): {
     .replace(/\s+/g, " ")
     .trim();
 
-  // 5. Separate primary action from purpose/notes (e.g. "levar o Rex ao veterinário para tomar vacina" -> Title: "Levar o Rex ao veterinário", Description: "Para tomar vacina")
+  // 5. Separação de objetivo/propósito secundário (ex: "para tomar a vacina de raiva")
   const purposeSplitRegex = /\b(?:para|pra|afim de|com o objetivo de|com o intuito de)\s+(.*)$/i;
   const purposeMatch = text.match(purposeSplitRegex);
 
   let primaryAction = text;
   if (purposeMatch && purposeMatch[1] && purposeMatch[1].trim().length > 3) {
     const purposeText = purposeMatch[1].trim();
-    // Only split if the primary action before 'para' is substantial (at least 2 words)
     const beforePurpose = text.substring(0, text.indexOf(purposeMatch[0])).trim();
     if (beforePurpose.split(" ").length >= 2) {
       primaryAction = beforePurpose;
@@ -67,17 +84,17 @@ export function extractCleanTaskTitleAndDescription(rawText: string): {
     }
   }
 
-  // Clean leading "uma / um" (e.g. "uma reunião com João" -> "Reunião com João")
+  // Limpeza de artigos indefinidos iniciais (ex: "uma reunião com João" -> "Reunião com João")
   primaryAction = primaryAction.replace(/^(?:uma|um)\s+/i, "").trim();
 
-  // Capitalize first letter of each major word or clean sentence
+  // Capitalização da primeira letra
   if (primaryAction.length > 0) {
     primaryAction = primaryAction.charAt(0).toUpperCase() + primaryAction.slice(1);
   } else {
     primaryAction = "Nova Tarefa";
   }
 
-  // Remove trailing punctuation or prepositions
+  // Remoção de pontuação residual no final
   primaryAction = primaryAction.replace(/[,\-–—:\.\s]+$/, "").trim();
 
   return {
@@ -87,4 +104,3 @@ export function extractCleanTaskTitleAndDescription(rawText: string): {
     extractedDayOfWeek,
   };
 }
-

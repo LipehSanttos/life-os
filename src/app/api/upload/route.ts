@@ -1,9 +1,20 @@
+/**
+ * @file route.ts (API /api/upload)
+ * @description Endpoint de upload multipart para processamento seguro de imagens locais de capas de livros.
+ * Valida MIME types permitidos, limita tamanho em 10MB, gera nomes únicos com hashes criptográficos
+ * e armazena os arquivos em `/public/uploads/covers/`.
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { getCurrentUser } from "@/lib/auth";
 import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 
+/**
+ * POST /api/upload
+ * Processa o envio de arquivo de imagem do computador e retorna o caminho público gerado.
+ */
 export async function POST(req: NextRequest) {
   try {
     const user = await getCurrentUser();
@@ -18,7 +29,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Nenhum arquivo de imagem foi enviado." }, { status: 400 });
     }
 
-    // Validate mime type
+    // Validação estrita de tipos MIME aceitos
     const validMimes = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/avif", "image/svg+xml"];
     if (!validMimes.includes(file.type)) {
       return NextResponse.json(
@@ -27,7 +38,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Limit size to 10MB
+    // Limite máximo de 10 megabytes
     const maxSize = 10 * 1024 * 1024;
     if (file.size > maxSize) {
       return NextResponse.json({ error: "A imagem deve ter no máximo 10MB." }, { status: 400 });
@@ -36,13 +47,13 @@ export async function POST(req: NextRequest) {
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
 
-    // Ensure uploads directory exists
+    // Garante que o diretório de destino existe no sistema de arquivos
     const uploadsDir = path.join(process.cwd(), "public", "uploads", "covers");
     if (!fs.existsSync(uploadsDir)) {
       fs.mkdirSync(uploadsDir, { recursive: true });
     }
 
-    // Generate unique safe filename
+    // Geração de nome único e seguro com timestamp e hash aleatório
     const ext = path.extname(file.name) || (file.type === "image/png" ? ".png" : ".jpg");
     const safeHash = crypto.randomBytes(8).toString("hex");
     const filename = `cover_${Date.now()}_${safeHash}${ext}`;
@@ -66,4 +77,3 @@ export async function POST(req: NextRequest) {
     );
   }
 }
-

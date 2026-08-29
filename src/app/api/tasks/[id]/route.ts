@@ -1,11 +1,27 @@
+/**
+ * @file route.ts (API /api/tasks/[id])
+ * @description Endpoint REST para consulta detalhada, atualização (PATCH) e exclusão (DELETE) de uma tarefa específica.
+ * Inclui lógica de avanço automático de ciclo para tarefas recorrentes (DAILY, WEEKLY, MONTHLY, ANNUAL).
+ */
+
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 import { addDays, addWeeks, addMonths, addYears } from "date-fns";
 
+/**
+ * GET /api/tasks/[id]
+ * Recupera os detalhes completos de uma tarefa pelo seu ID.
+ */
 export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    const task = await prisma.task.findUnique({
-      where: { id: params.id },
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+    }
+
+    const task = await prisma.task.findFirst({
+      where: { id: params.id, userId: user.id },
       include: {
         category: true,
         project: true,
@@ -28,11 +44,20 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
+/**
+ * PATCH /api/tasks/[id]
+ * Atualiza campos específicos da tarefa, subtarefas ou status de conclusão com suporte a recorrência.
+ */
 export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+    }
+
     const body = await req.json();
-    const existing = await prisma.task.findUnique({
-      where: { id: params.id },
+    const existing = await prisma.task.findFirst({
+      where: { id: params.id, userId: user.id },
       include: { subtasks: true },
     });
 
@@ -70,7 +95,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     let newStatus = status || existing.status;
     let completedAt = existing.completedAt;
 
-    // Check if task is being completed and is recurring
+    // Se for marcada como concluída e for recorrente, avança a data de vencimento para o próximo ciclo
     if (status === "COMPLETED" && existing.status !== "COMPLETED") {
       completedAt = new Date();
 
@@ -103,7 +128,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
       completedAt = null;
     }
 
-    // Update subtasks if provided
+    // Atualização atômica de subtarefas quando fornecidas
     if (Array.isArray(subtasks)) {
       await prisma.subtask.deleteMany({ where: { taskId: params.id } });
       if (subtasks.length > 0) {
@@ -163,9 +188,21 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
+/**
+ * DELETE /api/tasks/[id]
+ * Exclui permanentemente uma tarefa do usuário autenticado.
+ */
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
   try {
-    await prisma.task.delete({ where: { id: params.id } });
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+    }
+
+    await prisma.task.deleteMany({
+      where: { id: params.id, userId: user.id },
+    });
+
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Erro ao excluir tarefa." }, { status: 500 });
