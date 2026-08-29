@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Life OS Banner](https://images.unsplash.com/photo-1484480974693-6ca0a78fb36b?auto=format&fit=crop&w=1200&q=80)
+![Life OS Banner](./public/life-os-banner.jpg)
 
 **Uma plataforma completa, inteligente e minimalista para centralizar sua vida pessoal, acadêmica, profissional e financeira.**
 
