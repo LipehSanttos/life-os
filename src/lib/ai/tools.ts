@@ -1,12 +1,18 @@
 import { prisma } from "@/lib/db";
 import { formatDate, formatCurrency } from "@/lib/utils";
 import { addDays } from "date-fns";
+import { extractCleanTaskTitleAndDescription } from "./sanitizer";
 
 export async function executeTool(name: string, args: any, userId?: string) {
   const now = new Date();
 
   switch (name) {
     case "create_task": {
+      // Guardrail: Sanitize title to ensure it's never the full prompt
+      const sanitized = extractCleanTaskTitleAndDescription(args.title || "Nova Tarefa");
+      const finalTitle = sanitized.cleanTitle;
+      const finalDescription = args.description || sanitized.description || null;
+
       let categoryId: string | undefined;
       if (args.categoryName) {
         const cat = await prisma.category.findFirst({
@@ -45,11 +51,11 @@ export async function executeTool(name: string, args: any, userId?: string) {
       const task = await prisma.task.create({
         data: {
           userId: userId || null,
-          title: args.title,
-          description: args.description,
+          title: finalTitle,
+          description: finalDescription,
           priority: args.priority || "MEDIUM",
           dueDate: args.dueDate ? new Date(args.dueDate) : addDays(now, 1),
-          dueTime: args.dueTime,
+          dueTime: args.dueTime || sanitized.extractedTime || null,
           isRecurring: Boolean(args.isRecurring),
           recurrenceRule: args.recurrenceRule,
           categoryId: categoryId || args.categoryId,
@@ -66,34 +72,45 @@ export async function executeTool(name: string, args: any, userId?: string) {
       };
     }
 
-    case "register_financial_bill": {
-      let categoryId: string | undefined;
-      const catFin = await prisma.category.findFirst({ where: { slug: "financas" } });
-      if (catFin) categoryId = catFin.id;
+    case "update_task_status": {
+      const task = await prisma.task.update({
+        where: { id: args.taskId },
+        data: {
+          status: args.status,
+          completedAt: args.status === "COMPLETED" ? now : null,
+        },
+      });
+      return {
+        success: true,
+        message: `Tarefa "${task.title}" atualizada para ${task.status}!`,
+        task,
+      };
+    }
 
+    case "register_financial_bill": {
       const bill = await prisma.financialReminder.create({
         data: {
           userId: userId || null,
           title: args.title,
           amount: args.amount ? parseFloat(args.amount) : 0,
-          dueDate: args.dueDate ? new Date(args.dueDate) : addDays(now, 10),
+          dueDate: args.dueDate ? new Date(args.dueDate) : addDays(now, 5),
           isRecurring: Boolean(args.isRecurring),
-          recurrenceRule: args.recurrenceRule || (args.isRecurring ? "MONTHLY" : null),
-          recurrenceDay: args.recurrenceDay || null,
-          recipient: args.recipient || null,
-          categoryId: categoryId || args.categoryId,
+          recurrenceRule: args.recurrenceRule,
+          recurrenceDay: args.recurrenceDay ? parseInt(args.recurrenceDay) : null,
+          recipient: args.recipient,
+          status: "PENDING",
+          categoryId: args.categoryId,
         },
       });
-
       return {
         success: true,
-        message: `Lembrete financeiro "${bill.title}" no valor de ${formatCurrency(bill.amount)} cadastrado!`,
+        message: `Conta "${bill.title}" registrada com sucesso!`,
         bill,
       };
     }
 
     case "update_reading_progress": {
-      let book: any = null;
+      let book;
       if (args.bookId) {
         book = await prisma.book.findUnique({ where: { id: args.bookId } });
       } else if (args.bookTitle) {
@@ -106,71 +123,49 @@ export async function executeTool(name: string, args: any, userId?: string) {
       }
 
       if (!book) {
-        // Create new book if not existing
-        book = await prisma.book.create({
-          data: {
-            userId: userId || null,
-            title: args.bookTitle || "Livro em Leitura",
-            totalPages: 250,
-            currentPage: args.currentPage || 1,
-            progress: Math.round(((args.currentPage || 1) / 250) * 100),
-          },
-        });
-      } else {
-        const nextProgress = Math.min(Math.round((args.currentPage / book.totalPages) * 100), 100);
-        book = await prisma.book.update({
-          where: { id: book.id },
-          data: {
-            currentPage: args.currentPage,
-            progress: nextProgress,
-            status: nextProgress === 100 ? "COMPLETED" : "READING",
-          },
-        });
+        return { success: false, message: "Livro não encontrado na sua biblioteca." };
       }
+
+      const total = book.totalPages || 100;
+      const current = Math.min(parseInt(args.currentPage), total);
+      const progress = Math.round((current / total) * 100);
+
+      const updated = await prisma.book.update({
+        where: { id: book.id },
+        data: {
+          currentPage: current,
+          progress,
+          status: progress === 100 ? "COMPLETED" : "READING",
+        },
+      });
 
       return {
         success: true,
-        message: `Progresso de "${book.title}" atualizado para página ${book.currentPage} (${book.progress}%)! 📖`,
-        book,
+        message: `Progresso de "${updated.title}" atualizado para ${current}/${total} páginas (${progress}%)!`,
+        book: updated,
       };
     }
 
     case "create_project": {
-      const proj = await prisma.project.create({
+      const project = await prisma.project.create({
         data: {
           userId: userId || null,
           name: args.name,
           description: args.description,
           priority: args.priority || "MEDIUM",
           dueDate: args.dueDate ? new Date(args.dueDate) : null,
-          color: args.color || "#3b82f6",
+          categoryId: args.categoryId,
+          status: "NOT_STARTED",
         },
       });
-
       return {
         success: true,
-        message: `Projeto "${proj.name}" criado com sucesso! 📁`,
-        project: proj,
-      };
-    }
-
-    case "update_task_status": {
-      const task = await prisma.task.update({
-        where: { id: args.taskId },
-        data: {
-          status: args.status,
-          completedAt: args.status === "COMPLETED" ? new Date() : null,
-        },
-      });
-
-      return {
-        success: true,
-        message: `Tarefa "${task.title}" atualizada para ${task.status}!`,
-        task,
+        message: `Projeto "${project.name}" criado com sucesso!`,
+        project,
       };
     }
 
     default:
-      return { success: false, message: `Ferramenta "${name}" não encontrada.` };
+      throw new Error(`Ferramenta desconhecida: ${name}`);
   }
 }

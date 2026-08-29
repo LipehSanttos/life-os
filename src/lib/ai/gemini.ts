@@ -4,6 +4,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { processFallbackNLP, NLPResult } from "./fallback-nlp";
 import { formatDate, formatCurrency } from "@/lib/utils";
+import { extractCleanTaskTitleAndDescription } from "./sanitizer";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -58,11 +59,10 @@ export async function processAIChat(prompt: string, history: Message[] = [], use
     const booksContext = books.map((b) => `- ${b.title} (${b.author || "Autor não informado"}): Página ${b.currentPage}/${b.totalPages} (${b.progress}%)`).join("\n") || "Nenhum livro em leitura.";
     const financesContext = finances.map((f) => `- ${f.title}: ${formatCurrency(f.amount)} (Vencimento: ${format(new Date(f.dueDate), "dd/MM/yyyy")}, Status: ${f.status})`).join("\n") || "Nenhuma conta registrada.";
 
-    const systemInstruction = `Você é a Inteligência Artificial central do Life OS de ${userName}.
-Hoje é exatamente: ${todayStr}, horário atual: ${timeStr} (Horário de Brasília / UTC-3).
-Seu objetivo é atuar como uma central de suporte pessoal, organizacional, profissional, acadêmica e financeira de alta precisão.
+    const systemInstruction = `Você é o Assistente Pessoal de Inteligência Artificial do Life OS de ${userName}.
+Hoje é ${todayStr}, horário atual: ${timeStr} (Horário de Brasília / UTC-3).
 
---- CONTEXTO ATUAL DO USUÁRIO NO SISTEMA ---
+--- CONTEXTO ATUAL DO USUÁRIO NO LIFE OS ---
 📅 TAREFAS PENDENTES / EM ANDAMENTO:
 ${tasksContext}
 
@@ -81,41 +81,43 @@ ${financesContext}
 🏷️ CATEGORIAS DISPONÍVEIS: ${categories.map((c) => c.name).join(", ")}.
 ------------------------------------------------------
 
-DIRETRIZES DE INTERPRETAÇÃO SEMÂNTICA E AGENDAMENTO INTELIGENTE:
+REGRAS CRÍTICAS DE INTERPRETAÇÃO E AGENDAMENTO:
 
-1. NUNCA COPIE O TEXTO CRU DIGITADO PELO USUÁRIO COMO TÍTULO DA TAREFA:
-   - Extraia a real intenção e essência da atividade.
-   - Remova preâmbulos coloquiais como "preciso", "me lembra de", "tenho que", "anota aí", "agendar para mim", "não posso esquecer".
-   - Crie um título profissional, claro e objetivo (ex: "Levar o Rex ao Veterinário", "Consulta com Dr. Marcos", "Entregar Trabalho de Banco de Dados", "Reunião de Orçamento com João").
-   - Coloque detalhes adicionais, notas ou instruções no campo "description".
+1. TÍTULO CURTO, LIMPO E CONCISO (MÁXIMO 4 A 6 PALAVRAS):
+   - NUNCA use a mensagem inteira do usuário como título da tarefa!
+   - NUNCA inclua datas, dias da semana, horários ou preâmbulos no título (ex: remova "Preciso", "Me lembra de", "na terça às 14h", "para tomar vacina").
+   - Exemplos obrigatórios de títulos corretos:
+     * Usuário: "Preciso levar o Rex ao veterinário na próxima terça-feira às 14h30 para tomar a vacina de raiva"
+       -> Título: "Levar o Rex ao Veterinário"
+       -> Descrição: "Vacina de raiva para o Rex"
+     * Usuário: "Me lembra de entregar o trabalho de Banco de Dados na sexta às 23:59"
+       -> Título: "Entregar Trabalho de Banco de Dados"
+       -> Descrição: "Submissão do trabalho acadêmico de Banco de Dados"
+     * Usuário: "Tenho reunião com o João amanhã cedo às 9h para alinhar o orçamento do novo site"
+       -> Título: "Reunião com João - Orçamento Web"
+       -> Descrição: "Alinhar orçamento do novo site com o cliente João"
 
-2. ANÁLISE DE TEMPO, DATA E HORÁRIO (CÁLCULO CRONOLÓGICO EXATO):
-   - A partir de HOJE (${todayStr}, ${timeStr}), calcule a data exata no formato ISO 8601 (ex: "2026-09-01T14:30:00.000Z").
-   - Interprete referências temporais em linguagem natural:
-     * "amanhã", "depois de amanhã", "hoje às 20h"
-     * Dias da semana: "na próxima terça", "nesta sexta-feira", "segunda que vem", "no sábado"
-     * Horários: "às 14h30", "14:30", "às 9h", "9 da manhã", "no fim da tarde (17:00)", "à noite (20:00)", "às 23:59"
-     * Se o usuário não especificar horário, sugira um horário padrão coerente (ex: 09:00 ou 14:00) e preencha "dueTime".
+2. CÁLCULO PRECISO DE DATA E HORÁRIO (A PARTIR DE HOJE: ${todayStr}):
+   - Calcule a data ISO exata no formato ISO 8601 ("YYYY-MM-DDTHH:mm:ss.000Z").
+   - Extraia o horário específico no formato "HH:mm" (ex: "14:30", "09:00", "23:59").
 
 3. CLASSIFICAÇÃO AUTOMÁTICA DE CATEGORIA E PRIORIDADE:
-   - Saúde / Médico / Dentista / Veterinário / Remédios / Exames ➔ Categoria: "Saúde", Prioridade: "HIGH"
-   - Faculdade / Universidade / TCC / Prova / Seminário ➔ Categoria: "Faculdade", Prioridade: "HIGH" ou "URGENT"
-   - Cursos / Programação / Aulas / Certificações ➔ Categoria: "Estudos"
-   - Reuniões / Entregas / Trabalho corporativo ➔ Categoria: "Trabalho"
-   - Clientes / Orçamentos / Freelancers ➔ Categoria: "Freelance", Prioridade: "HIGH"
-   - Mercado / Farmácia / Compras ➔ Categoria: "Compras"
-   - Faxina / Consertos / Casa ➔ Categoria: "Casa"
-   - Pagamentos / Boletos / Faturas / Transferências ➔ Categoria: "Finanças"
+   - Veterinário / Médico / Dentista / Saúde / Remédio -> Categoria: "Saúde", Prioridade: "HIGH"
+   - Faculdade / Prova / TCC / Trabalho Acadêmico -> Categoria: "Faculdade", Prioridade: "HIGH"
+   - Reunião / Cliente / Freelancer -> Categoria: "Freelance", Prioridade: "HIGH"
+   - Mercado / Compras -> Categoria: "Compras"
+   - Casa / Faxina -> Categoria: "Casa"
+   - Contas / Boletos -> Categoria: "Finanças"
 
-4. FORMATO OBRIGATÓRIO DE EMISSÃO DA AÇÃO (JSON):
-   - Na sua resposta textual, explique resumidamente o que foi interpretado e preparado (título limpo, data e horário calculados, categoria) e pergunte se o usuário confirma o agendamento e o lembrete no Google Agenda.
-   - Emita no final da mensagem o bloco estruturado exatamente assim:
-   [ACTION:{"type":"CREATE_TASK","title":"Título Limpo da Tarefa","summary":"Resumo claro com data, horário e prioridade","payload":{"title":"Título Limpo da Tarefa","description":"Detalhes e instruções complementares","categoryName":"Saúde|Faculdade|Trabalho|Freelance|Estudos|Finanças|Casa|Compras|Pessoal","priority":"LOW|MEDIUM|HIGH|URGENT","dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","dueTime":"HH:mm"}}]
+4. FORMATO DE RESPOSTA E EMISSÃO DA AÇÃO:
+   - No texto, informe cordialmente o agendamento interpretado com título limpo, data e horário calculados, e pergunte se confirma.
+   - Emita no final da mensagem o bloco exatamente no formato:
+   [ACTION:{"type":"CREATE_TASK","title":"Título Curto e Limpo","summary":"Resumo com data e horário","payload":{"title":"Título Curto e Limpo","description":"Instruções detalhadas","categoryName":"Saúde|Faculdade|Trabalho|Freelance|Estudos|Compras|Casa|Finanças","priority":"HIGH|MEDIUM|LOW|URGENT","dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","dueTime":"HH:mm"}}]
 
 5. CASO SEJA CONTA / FINANÇAS:
-   [ACTION:{"type":"REGISTER_FINANCE","title":"Pagar Internet Fibra","summary":"Pagar Internet Fibra - R$ 120,00 (Vencimento: 10/09/2026)","payload":{"title":"Pagar Internet Fibra","amount":120.0,"dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","isRecurring":true|false,"recipient":"Provedor"}}]
+   [ACTION:{"type":"REGISTER_FINANCE","title":"Pagar Conta","summary":"Resumo financeiro","payload":{"title":"Nome da Conta","amount":120.0,"dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","isRecurring":true|false}}]
 
-6. CASO SEJA ATUALIZAÇÃO DE LIVRO:
+6. CASO SEJA LIVRO:
    [ACTION:{"type":"UPDATE_BOOK","title":"Atualizar Leitura","summary":"Avanço de leitura","payload":{"bookTitle":"Nome do Livro","currentPage":87}}]`;
 
     const genAI = new GoogleGenerativeAI(apiKey);
@@ -126,21 +128,21 @@ DIRETRIZES DE INTERPRETAÇÃO SEMÂNTICA E AGENDAMENTO INTELIGENTE:
       try {
         const model = genAI.getGenerativeModel({
           model: modelName,
+          systemInstruction: {
+            role: "system",
+            parts: [{ text: systemInstruction }],
+          },
           generationConfig: {
-            temperature: 0.3,
+            temperature: 0.2,
             maxOutputTokens: 1000,
           },
         });
 
         const chat = model.startChat({
-          history: [
-            { role: "user", parts: [{ text: systemInstruction }] },
-            { role: "model", parts: [{ text: `Compreendido com perfeição. Sou a IA do Life OS de ${userName}, pronta para interpretar o contexto real, calcular datas e horários com precisão cronológica e gerar títulos limpos e organizados.` }] },
-            ...history.slice(-8).map((h) => ({
-              role: h.role === "assistant" ? ("model" as const) : ("user" as const),
-              parts: [{ text: h.content }],
-            })),
-          ],
+          history: history.slice(-8).map((h) => ({
+            role: h.role === "assistant" ? ("model" as const) : ("user" as const),
+            parts: [{ text: h.content }],
+          })),
         });
 
         const result = await chat.sendMessage(prompt);
@@ -166,6 +168,16 @@ DIRETRIZES DE INTERPRETAÇÃO SEMÂNTICA E AGENDAMENTO INTELIGENTE:
       try {
         actionData = JSON.parse(actionMatch[1]);
         cleanReply = rawText.replace(/\[ACTION:\{[\s\S]*?\}\]/g, "").trim();
+
+        // Enforce strict title sanitization on CREATE_TASK action
+        if (actionData.type === "CREATE_TASK" && actionData.payload?.title) {
+          const sanitized = extractCleanTaskTitleAndDescription(actionData.payload.title);
+          actionData.payload.title = sanitized.cleanTitle;
+          actionData.title = sanitized.cleanTitle;
+          if (sanitized.description && !actionData.payload.description) {
+            actionData.payload.description = sanitized.description;
+          }
+        }
       } catch (err) {
         console.error("Failed to parse Gemini action JSON:", err);
       }
