@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   CheckCircle2,
   Circle,
@@ -33,19 +33,55 @@ interface TaskItemProps {
 export function TaskItem({ task, onStatusChange, onEdit, onDelete }: TaskItemProps) {
   const [completed, setCompleted] = useState(task.status === "COMPLETED");
   const [isHovered, setIsHovered] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
-  const handleToggle = () => {
+  // Sincroniza estado visual quando as propriedades da tarefa mudam
+  useEffect(() => {
+    setCompleted(task.status === "COMPLETED");
+  }, [task.status]);
+
+  const handleToggle = async () => {
+    if (updating) return;
+
     const newStatus = completed ? "PENDING" : "COMPLETED";
-    setCompleted(!completed);
+    const previousState = completed;
+
+    // Atualização otimista imediata na UI
+    setCompleted(!previousState);
+    setUpdating(true);
+
     if (newStatus === "COMPLETED") {
       confetti({
         particleCount: 35,
         spread: 60,
         origin: { y: 0.8 },
       });
+      toast.success("Tarefa concluída!");
     }
-    if (onStatusChange) {
-      onStatusChange(task.id, newStatus);
+
+    try {
+      const res = await fetch(`/api/tasks/${task.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: newStatus }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Erro ao salvar status da tarefa.");
+      }
+
+      // Notifica o restante do sistema para atualizar métricas e listagens
+      window.dispatchEvent(new CustomEvent("refresh-data"));
+
+      if (onStatusChange) {
+        onStatusChange(task.id, newStatus);
+      }
+    } catch (error) {
+      console.error("Falha ao persistir status da tarefa:", error);
+      setCompleted(previousState);
+      toast.error("Não foi possível atualizar o status no banco de dados.");
+    } finally {
+      setUpdating(false);
     }
   };
 
@@ -75,7 +111,8 @@ export function TaskItem({ task, onStatusChange, onEdit, onDelete }: TaskItemPro
       <div className="flex items-center gap-3.5 flex-1 min-w-0">
         <button
           onClick={handleToggle}
-          className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors focus:outline-none"
+          disabled={updating}
+          className="flex-shrink-0 text-muted-foreground hover:text-primary transition-colors focus:outline-none disabled:opacity-50"
           title={completed ? "Marcar como pendente" : "Concluir tarefa"}
         >
           {completed ? (
