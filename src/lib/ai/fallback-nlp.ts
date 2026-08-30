@@ -224,7 +224,7 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
   const formattedDate = formatDate(targetDate);
 
   return {
-    reply: `Entendido! Agendei a tarefa **"${cleanTitle}"** (${category?.name || "Geral"}) para **${formattedDate}** às **${dueTime}**.\n\nConfirme a data e sincronize com seu Google Agenda no cartão abaixo:`,
+    reply: `Entendido! Preparei a tarefa **"${cleanTitle}"** (${category?.name || "Geral"}) para **${formattedDate}** às **${dueTime}**.\n\nConfirme a atividade no cartão abaixo:`,
     action: {
       type: "CREATE_TASK",
       title: cleanTitle,
