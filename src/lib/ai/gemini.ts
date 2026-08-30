@@ -1,3 +1,9 @@
+/**
+ * @file gemini.ts
+ * @description Módulo de integração com a Google Gemini API (modelos gemini-3.6-flash / 3.5-flash)
+ * com fallback inteligente, injeção de contexto de dados isolados por usuário e higienização estrita de títulos.
+ */
+
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import { prisma } from "@/lib/db";
 import { format } from "date-fns";
@@ -19,7 +25,7 @@ export async function processAIChat(prompt: string, history: Message[] = [], use
 
   const apiKey = process.env.GEMINI_API_KEY || userSettings?.geminiApiKey;
 
-  // If no API key is provided, use fallback NLP engine
+  // Se não possuir chave de API configurada, utiliza o motor determinístico local
   if (!apiKey || apiKey.trim() === "") {
     return processFallbackNLP(prompt, userId);
   }
@@ -29,7 +35,7 @@ export async function processAIChat(prompt: string, history: Message[] = [], use
     const todayStr = format(now, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
     const timeStr = format(now, "HH:mm");
 
-    // Fetch live user-isolated context from database
+    // Carrega o contexto em tempo real isolado por usuário
     const userFilter = userId ? { userId } : {};
 
     const [categories, projects, courses, books, finances, tasks] = await Promise.all([
@@ -48,7 +54,6 @@ export async function processAIChat(prompt: string, history: Message[] = [], use
 
     const userName = user?.name || userSettings?.name || "Eduardo Felipe";
 
-    // Build context summary for Gemini
     const tasksContext = tasks.map((t) => {
       const due = t.dueDate ? format(new Date(t.dueDate), "dd/MM/yyyy") : "Sem data";
       return `- ${t.title} [Prioridade: ${t.priority}, Prazo: ${due}${t.dueTime ? ` às ${t.dueTime}` : ""}, Categoria: ${t.category?.name || "Geral"}]`;
@@ -81,25 +86,29 @@ ${financesContext}
 🏷️ CATEGORIAS DISPONÍVEIS: ${categories.map((c) => c.name).join(", ")}.
 ------------------------------------------------------
 
-REGRAS CRÍTICAS DE INTERPRETAÇÃO E AGENDAMENTO:
+REGRAS CRÍTICAS E OBRIGATÓRIAS DE EXTRAÇÃO DE TÍTULO:
 
-1. TÍTULO CURTO, LIMPO E CONCISO (MÁXIMO 4 A 6 PALAVRAS):
-   - NUNCA use a mensagem inteira do usuário como título da tarefa!
-   - NUNCA inclua datas, dias da semana, horários ou preâmbulos no título (ex: remova "Preciso", "Me lembra de", "na terça às 14h", "para tomar vacina").
+1. O TÍTULO DA TAREFA DEVE CONTER EXCLUSIVAMENTE O NOME DA AÇÃO (MÁXIMO 2 A 5 PALAVRAS):
+   - NUNCA use a frase inteira do usuário nem preâmbulos de conversação!
+   - NUNCA coloque no título termos como "Gostaria que agendasse", "Me lembre de", "Por favor", "Preciso", datas ("amanhã", "terça") ou horários ("às 8h", "às 14h30").
    - Exemplos obrigatórios de títulos corretos:
-     * Usuário: "Preciso levar o Rex ao veterinário na próxima terça-feira às 14h30 para tomar a vacina de raiva"
+     * Comando: "Me lembre de comprar pão amanhã, as 8h."
+       -> Título: "Comprar pão"
+       -> Horário: "08:00"
+     * Comando: "Gostaria que agendasse uma reunião com o time amanhã às 10h"
+       -> Título: "Reunião com o Time"
+       -> Horário: "10:00"
+     * Comando: "Preciso levar o Rex ao veterinário na próxima terça-feira às 14h30 para tomar a vacina de raiva"
        -> Título: "Levar o Rex ao Veterinário"
        -> Descrição: "Vacina de raiva para o Rex"
-     * Usuário: "Me lembra de entregar o trabalho de Banco de Dados na sexta às 23:59"
+       -> Horário: "14:30"
+     * Comando: "Gostaria que você marcasse entrega do trabalho de Banco de Dados na sexta às 23:59"
        -> Título: "Entregar Trabalho de Banco de Dados"
-       -> Descrição: "Submissão do trabalho acadêmico de Banco de Dados"
-     * Usuário: "Tenho reunião com o João amanhã cedo às 9h para alinhar o orçamento do novo site"
-       -> Título: "Reunião com João - Orçamento Web"
-       -> Descrição: "Alinhar orçamento do novo site com o cliente João"
+       -> Horário: "23:59"
 
 2. CÁLCULO PRECISO DE DATA E HORÁRIO (A PARTIR DE HOJE: ${todayStr}):
    - Calcule a data ISO exata no formato ISO 8601 ("YYYY-MM-DDTHH:mm:ss.000Z").
-   - Extraia o horário específico no formato "HH:mm" (ex: "14:30", "09:00", "23:59").
+   - Extraia o horário específico no formato "HH:mm" (ex: "08:00", "14:30", "09:00", "23:59").
 
 3. CLASSIFICAÇÃO AUTOMÁTICA DE CATEGORIA E PRIORIDADE:
    - Veterinário / Médico / Dentista / Saúde / Remédio -> Categoria: "Saúde", Prioridade: "HIGH"
@@ -109,10 +118,10 @@ REGRAS CRÍTICAS DE INTERPRETAÇÃO E AGENDAMENTO:
    - Casa / Faxina -> Categoria: "Casa"
    - Contas / Boletos -> Categoria: "Finanças"
 
-4. FORMATO DE RESPOSTA E EMISSÃO DA AÇÃO:
-   - No texto, informe cordialmente o agendamento interpretado com título limpo, data e horário calculados, e pergunte se confirma.
-   - Emita no final da mensagem o bloco exatamente no formato:
-   [ACTION:{"type":"CREATE_TASK","title":"Título Curto e Limpo","summary":"Resumo com data e horário","payload":{"title":"Título Curto e Limpo","description":"Instruções detalhadas","categoryName":"Saúde|Faculdade|Trabalho|Freelance|Estudos|Compras|Casa|Finanças","priority":"HIGH|MEDIUM|LOW|URGENT","dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","dueTime":"HH:mm"}}]
+4. FORMATO DE EMISSÃO DA AÇÃO NO FINAL DA MENSAGEM:
+   - No texto da resposta, confirme com gentileza a atividade, o título limpo e o horário.
+   - Emita no final da mensagem o bloco no formato exato:
+   [ACTION:{"type":"CREATE_TASK","title":"Título Curto e Limpo","summary":"Título Curto e Limpo (Data: DD/MM/AAAA às HH:mm)","payload":{"title":"Título Curto e Limpo","description":"Notas e detalhes","categoryName":"Saúde|Faculdade|Trabalho|Freelance|Estudos|Compras|Casa|Finanças","priority":"HIGH|MEDIUM|LOW|URGENT","dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","dueTime":"HH:mm"}}]
 
 5. CASO SEJA CONTA / FINANÇAS:
    [ACTION:{"type":"REGISTER_FINANCE","title":"Pagar Conta","summary":"Resumo financeiro","payload":{"title":"Nome da Conta","amount":120.0,"dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","isRecurring":true|false}}]
@@ -133,7 +142,7 @@ REGRAS CRÍTICAS DE INTERPRETAÇÃO E AGENDAMENTO:
             parts: [{ text: systemInstruction }],
           },
           generationConfig: {
-            temperature: 0.2,
+            temperature: 0.1,
             maxOutputTokens: 1000,
           },
         });
@@ -156,10 +165,9 @@ REGRAS CRÍTICAS DE INTERPRETAÇÃO E AGENDAMENTO:
     }
 
     if (!rawText) {
-      throw new Error("All Gemini candidate models failed to respond.");
+      throw new Error("Todos os modelos Gemini falharam em responder.");
     }
 
-    // Check if Gemini returned an action block [ACTION:{...}]
     let actionData: any = null;
     let cleanReply = rawText;
 
@@ -169,17 +177,22 @@ REGRAS CRÍTICAS DE INTERPRETAÇÃO E AGENDAMENTO:
         actionData = JSON.parse(actionMatch[1]);
         cleanReply = rawText.replace(/\[ACTION:\{[\s\S]*?\}\]/g, "").trim();
 
-        // Enforce strict title sanitization on CREATE_TASK action
-        if (actionData.type === "CREATE_TASK" && actionData.payload?.title) {
-          const sanitized = extractCleanTaskTitleAndDescription(actionData.payload.title);
+        // Higienização estrita garantida no backend
+        if (actionData.type === "CREATE_TASK") {
+          const rawTitle = actionData.payload?.title || actionData.title || prompt;
+          const sanitized = extractCleanTaskTitleAndDescription(rawTitle);
           actionData.payload.title = sanitized.cleanTitle;
           actionData.title = sanitized.cleanTitle;
           if (sanitized.description && !actionData.payload.description) {
             actionData.payload.description = sanitized.description;
           }
+          if (sanitized.extractedTime && !actionData.payload.dueTime) {
+            actionData.payload.dueTime = sanitized.extractedTime;
+          }
+          actionData.summary = `${sanitized.cleanTitle} (Data: ${actionData.payload.dueDate ? formatDate(actionData.payload.dueDate) : "Amanhã"}${actionData.payload.dueTime ? ` às ${actionData.payload.dueTime}` : ""})`;
         }
       } catch (err) {
-        console.error("Failed to parse Gemini action JSON:", err);
+        console.error("Falha ao analisar JSON de ação do Gemini:", err);
       }
     }
 

@@ -8,6 +8,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { executeTool } from "@/lib/ai/tools";
+import { extractCleanTaskTitleAndDescription } from "@/lib/ai/sanitizer";
 
 /**
  * POST /api/chat/confirm
@@ -39,10 +40,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, message: "Ação cancelada." });
     }
 
-    // Se confirmada, despacha para o motor de ferramentas
+    // Se confirmada, despacha para o motor de ferramentas garantindo título limpo
     let resultMessage = "Ação executada com sucesso!";
     if (action.type === "CREATE_TASK") {
-      const res = await executeTool("create_task", action.payload, user.id);
+      const rawTitle = action.payload?.title || action.title || "Nova Tarefa";
+      const sanitized = extractCleanTaskTitleAndDescription(rawTitle);
+      const cleanPayload = {
+        ...action.payload,
+        title: sanitized.cleanTitle,
+        description: action.payload?.description || sanitized.description || null,
+        dueTime: action.payload?.dueTime || sanitized.extractedTime || null,
+      };
+
+      const res = await executeTool("create_task", cleanPayload, user.id);
       resultMessage = res.message || resultMessage;
     } else if (action.type === "REGISTER_FINANCE") {
       const res = await executeTool("register_financial_bill", action.payload, user.id);
