@@ -1,16 +1,17 @@
 /**
  * @file route.ts (API /api/admin/users/[id])
  * @description Operações administrativas sobre um usuário específico: atualização de nome,
- * alteração de papel (ADMIN/USER), redefinição forçada de senha e exclusão permanente de conta.
+ * alteração de papel (ADMIN/USER), redefinição de senha e exclusão no Supabase Auth e Prisma.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin, hashPassword } from "@/lib/auth";
+import { supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase/admin";
 
 /**
  * PATCH /api/admin/users/[id]
- * Atualiza dados de cadastro, permissões ou senha do usuário selecionado.
+ * Atualiza dados, papel ou senha do usuário no Supabase Auth e no banco.
  */
 export async function PATCH(
   req: NextRequest,
@@ -38,9 +39,14 @@ export async function PATCH(
     }
 
     const updateData: any = {};
+    const supabaseUpdateAttrs: any = {};
 
     if (name && name.trim()) {
       updateData.name = name.trim();
+      supabaseUpdateAttrs.user_metadata = {
+        ...(supabaseUpdateAttrs.user_metadata || {}),
+        name: name.trim(),
+      };
     }
 
     if (email && email.trim() && email.includes("@")) {
@@ -51,18 +57,21 @@ export async function PATCH(
           return NextResponse.json({ error: "E-mail já utilizado por outro usuário." }, { status: 400 });
         }
         updateData.email = cleanEmail;
+        supabaseUpdateAttrs.email = cleanEmail;
       }
     }
 
-    // Regra de segurança: Não permite ao administrador revogar seu próprio papel de ADMIN
     if (role && (role === "ADMIN" || role === "USER")) {
       if (existing.id === admin.id && role !== "ADMIN") {
         return NextResponse.json(
           { error: "Você não pode revogar seu próprio privilégio de Administrador." },
-          { status: 400 }
-        );
+          );
       }
       updateData.role = role;
+      supabaseUpdateAttrs.user_metadata = {
+        ...(supabaseUpdateAttrs.user_metadata || {}),
+        role,
+      };
     }
 
     if (password && password.trim()) {
@@ -73,8 +82,19 @@ export async function PATCH(
         );
       }
       updateData.passwordHash = hashPassword(password.trim());
+      supabaseUpdateAttrs.password = password.trim();
     }
 
+    // 1. Atualiza no Supabase Auth se configurado
+    if (isSupabaseConfigured()) {
+      try {
+        await supabaseAdmin.auth.admin.updateUserById(id, supabaseUpdateAttrs);
+      } catch (sbErr: any) {
+        console.warn("Supabase Auth warning on updateUserById:", sbErr.message);
+      }
+    }
+
+    // 2. Atualiza no banco de dados
     const updated = await prisma.user.update({
       where: { id },
       data: updateData,
@@ -100,7 +120,7 @@ export async function PATCH(
 
 /**
  * DELETE /api/admin/users/[id]
- * Exclui permanentemente um usuário da plataforma (impede autoexclusão de conta).
+ * Exclui permanentemente o usuário do Supabase Auth e do banco de dados.
  */
 export async function DELETE(
   req: NextRequest,
@@ -117,7 +137,6 @@ export async function DELETE(
 
     const { id } = params;
 
-    // Regra de segurança: O administrador não pode deletar a si mesmo
     if (id === admin.id) {
       return NextResponse.json(
         { error: "Você não pode excluir sua própria conta de administrador." },
@@ -133,6 +152,16 @@ export async function DELETE(
       return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
     }
 
+    // 1. Exclui do Supabase Auth se configurado
+    if (isSupabaseConfigured()) {
+      try {
+        await supabaseAdmin.auth.admin.deleteUser(id);
+      } catch (sbErr: any) {
+        console.warn("Supabase Auth warning on deleteUser:", sbErr.message);
+      }
+    }
+
+    // 2. Exclui do banco de dados
     await prisma.user.delete({
       where: { id },
     });

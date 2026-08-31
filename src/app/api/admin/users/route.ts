@@ -1,13 +1,13 @@
 /**
  * @file route.ts (API /api/admin/users)
- * @description Gestão administrativa de usuários: listagem e criação de novos perfis.
- * Protegido exclusivamente para usuários com papel `ADMIN`. Garante que novas contas
- * iniciem com perfil 100% novo e limpo (zero registros vinculados).
+ * @description Gestão administrativa de usuários integrada ao Supabase Auth e Prisma.
+ * Criação de novos perfis com provisionamento em `auth.users` e sincronização no banco.
  */
 
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireAdmin, hashPassword, isValidUsernameOrEmail } from "@/lib/auth";
+import { supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase/admin";
 
 /**
  * GET /api/admin/users
@@ -47,7 +47,7 @@ export async function GET() {
 
 /**
  * POST /api/admin/users
- * Cria um novo perfil de usuário com validação de formato de login e senha criptografada.
+ * Cria um novo usuário no Supabase Auth e no banco de dados.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -92,9 +92,35 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Cria o usuário completamente limpo (sem nenhuma tarefa pré-existente)
+    let supabaseUserId: string | null = null;
+
+    // 1. Criação no Supabase Auth se configurado
+    if (isSupabaseConfigured() && cleanEmail.includes("@")) {
+      try {
+        const { data: sbUser, error: sbError } = await supabaseAdmin.auth.admin.createUser({
+          email: cleanEmail,
+          password: password,
+          email_confirm: true,
+          user_metadata: {
+            name: name.trim(),
+            role: userRole,
+          },
+        });
+
+        if (sbError) {
+          console.warn("Supabase Auth warning on createUser:", sbError.message);
+        } else if (sbUser?.user) {
+          supabaseUserId = sbUser.user.id;
+        }
+      } catch (sbErr: any) {
+        console.warn("Supabase Auth bypass on createUser:", sbErr.message);
+      }
+    }
+
+    // 2. Persiste no banco de dados local / PostgreSQL
     const newUser = await prisma.user.create({
       data: {
+        id: supabaseUserId || undefined,
         name: name.trim(),
         email: cleanEmail,
         passwordHash: hashPassword(password),

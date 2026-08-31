@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { getCurrentUser, verifyPassword, hashPassword } from "@/lib/auth";
+import { supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase/admin";
 
 export async function POST(req: NextRequest) {
   try {
@@ -45,7 +46,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Usuário não encontrado." }, { status: 404 });
     }
 
-    // Verify current password strictly against stored database hash
+    // Validação da senha atual contra o hash armazenado
     const isCurrentValid = verifyPassword(currentPassword, fullUser.passwordHash);
 
     if (!isCurrentValid) {
@@ -55,6 +56,18 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // 1. Atualiza no Supabase Auth se configurado
+    if (isSupabaseConfigured()) {
+      try {
+        await supabaseAdmin.auth.admin.updateUserById(user.id, {
+          password: newPassword,
+        });
+      } catch (sbErr: any) {
+        console.warn("Supabase Auth warning on change-password:", sbErr.message);
+      }
+    }
+
+    // 2. Atualiza no banco de dados local / PostgreSQL
     const newHash = hashPassword(newPassword);
 
     await prisma.user.update({
@@ -66,7 +79,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: "Senha alterada com sucesso! Sua senha anterior foi invalidada e sua nova senha já está ativa.",
+      message: "Senha alterada com sucesso! Sua nova senha já está ativa.",
     });
   } catch (error: any) {
     return NextResponse.json(

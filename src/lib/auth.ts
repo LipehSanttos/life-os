@@ -1,12 +1,13 @@
 /**
  * @file auth.ts
- * @description Módulo central de autenticação, criptografia de senhas, validação de credenciais,
- * geração/verificação de tokens de sessão (HMAC SHA-256) e controle de permissões de acesso (RBAC).
+ * @description Módulo central de autenticação e gestão de usuários integrado ao Supabase Auth & Prisma.
+ * Suporta tokens Supabase, controle de sessões, controle de permissões (RBAC) e sincronização de perfis.
  */
 
 import crypto from "crypto";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
+import { supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase/admin";
 
 /** Chave secreta para assinatura dos tokens de autenticação (HMAC) */
 const AUTH_SECRET = process.env.AUTH_SECRET || "life-os-super-secret-production-key-2026";
@@ -15,12 +16,7 @@ const AUTH_SECRET = process.env.AUTH_SECRET || "life-os-super-secret-production-
 export const AUTH_COOKIE_NAME = "iteam_auth_token";
 
 /**
- * Valida o nome de usuário ou e-mail fornecido na autenticação/cadastro.
- * Regra de Segurança: Aceita estritamente caracteres alfanuméricos (a-z, 0-9) e ponto (.).
- * Proíbe espaços, caracteres de injeção ou símbolos especiais.
- *
- * @param login Nome de usuário ou e-mail a ser validado
- * @returns Objeto indicando se é válido e mensagem de erro explicativa em caso de falha
+ * Valida o formato de login (e-mail ou nome de usuário).
  */
 export function isValidUsernameOrEmail(login: string): { valid: boolean; error?: string } {
   if (!login || login.trim() === "") {
@@ -29,24 +25,21 @@ export function isValidUsernameOrEmail(login: string): { valid: boolean; error?:
 
   const trimmed = login.trim();
 
-  // Proíbe rigorosamente qualquer tipo de espaço em branco
   if (/\s/.test(trimmed)) {
     return { valid: false, error: "O nome de usuário não pode conter espaços." };
   }
 
-  // Validação quando fornecido no formato de e-mail
   if (trimmed.includes("@")) {
-    const emailRegex = /^[a-zA-Z0-9.]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(trimmed)) {
-      return { valid: false, error: "Formato de e-mail inválido. Apenas letras, números e ponto (.) são permitidos antes do @." };
+      return { valid: false, error: "Formato de e-mail inválido." };
     }
     return { valid: true };
   }
 
-  // Validação para nome de usuário simples: apenas letras, números e ponto
-  const usernameRegex = /^[a-zA-Z0-9.]+$/;
+  const usernameRegex = /^[a-zA-Z0-9._-]+$/;
   if (!usernameRegex.test(trimmed)) {
-    return { valid: false, error: "O nome de usuário aceita apenas letras, números e ponto (.) sem espaços ou outros caracteres." };
+    return { valid: false, error: "O nome de usuário aceita apenas letras, números, ponto (.) e traço (-)." };
   }
 
   return { valid: true };
@@ -54,9 +47,6 @@ export function isValidUsernameOrEmail(login: string): { valid: boolean; error?:
 
 /**
  * Gera um hash criptográfico seguro para a senha utilizando PBKDF2 com Salt aleatório de 16 bytes.
- *
- * @param password Senha em texto puro a ser criptografada
- * @returns String contendo salt e hash separados por dois pontos (`salt:hash`)
  */
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -65,11 +55,7 @@ export function hashPassword(password: string): string {
 }
 
 /**
- * Compara uma senha em texto puro com o hash criptográfico armazenado no banco de dados.
- *
- * @param password Senha fornecida na tentativa de login
- * @param storedHash Hash armazenado no banco (`salt:hash`)
- * @returns Booleano indicando se a senha corresponde ao hash
+ * Compara uma senha em texto puro com o hash PBKDF2 armazenado.
  */
 export function verifyPassword(password: string, storedHash: string): boolean {
   try {
@@ -84,15 +70,12 @@ export function verifyPassword(password: string, storedHash: string): boolean {
 
 /**
  * Cria um token de sessão assinado digitalmente com HMAC-SHA256 e validade de 30 dias.
- *
- * @param payload Informações do usuário (id, email, name, role)
- * @returns Token formatado como `encodedData.signature`
  */
 export function createToken(payload: { id: string; email: string; name: string; role?: string }): string {
   const data = JSON.stringify({
     ...payload,
     role: payload.role || "USER",
-    exp: Date.now() + 1000 * 60 * 60 * 24 * 30, // Validade de 30 dias
+    exp: Date.now() + 1000 * 60 * 60 * 24 * 30, // 30 dias
   });
   const encodedData = Buffer.from(data).toString("base64url");
   const signature = crypto.createHmac("sha256", AUTH_SECRET).update(encodedData).digest("base64url");
@@ -101,9 +84,6 @@ export function createToken(payload: { id: string; email: string; name: string; 
 
 /**
  * Decodifica e verifica a assinatura criptográfica e a validade temporal do token de sessão.
- *
- * @param token Token de sessão recebido no cookie HTTP
- * @returns Payload do usuário se o token for válido e não expirado, ou `null` caso contrário
  */
 export function verifyToken(token: string): { id: string; email: string; name: string; role: string } | null {
   try {
@@ -123,10 +103,7 @@ export function verifyToken(token: string): { id: string; email: string; name: s
 }
 
 /**
- * Recupera o usuário autenticado na requisição atual a partir do cookie HTTP de sessão.
- * Utilizado por todas as rotas de API para garantir o isolamento estrito de dados (`userId`).
- *
- * @returns Objeto com os dados do usuário autenticado no banco ou `null` se não autenticado
+ * Recupera o usuário autenticado na requisição atual a partir dos cookies HTTP (Supabase Auth ou Cookie de Sessão).
  */
 export async function getCurrentUser() {
   try {
@@ -134,15 +111,49 @@ export async function getCurrentUser() {
     const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
     if (!token) return null;
 
+    // 1. Tenta verificar token de sessão padrão
     const verified = verifyToken(token);
-    if (!verified) return null;
+    if (verified) {
+      const user = await prisma.user.findUnique({
+        where: { id: verified.id },
+        select: { id: true, name: true, email: true, role: true, avatarUrl: true },
+      });
 
-    const user = await prisma.user.findUnique({
-      where: { id: verified.id },
-      select: { id: true, name: true, email: true, role: true, avatarUrl: true },
-    });
+      if (user) return user;
+    }
 
-    return user;
+    // 2. Se o Supabase estiver configurado, tenta validar token diretamente com o Supabase Auth
+    if (isSupabaseConfigured()) {
+      try {
+        const { data: { user: sbUser }, error } = await supabaseAdmin.auth.getUser(token);
+        if (sbUser && !error && sbUser.email) {
+          // Sincroniza ou recupera o perfil correspondente no banco
+          let user = await prisma.user.findUnique({
+            where: { email: sbUser.email },
+            select: { id: true, name: true, email: true, role: true, avatarUrl: true },
+          });
+
+          if (!user) {
+            user = await prisma.user.create({
+              data: {
+                id: sbUser.id,
+                email: sbUser.email,
+                name: (sbUser.user_metadata?.name as string) || sbUser.email,
+                role: (sbUser.user_metadata?.role as string) || "USER",
+                passwordHash: hashPassword(crypto.randomBytes(32).toString("hex")),
+              },
+              select: { id: true, name: true, email: true, role: true, avatarUrl: true },
+            });
+          }
+
+          return user;
+        }
+      } catch (sbErr) {
+        // Ignora erro de Supabase e retorna null se falhar
+      }
+    }
+
+    return null;
   } catch {
     return null;
   }
@@ -150,9 +161,6 @@ export async function getCurrentUser() {
 
 /**
  * Verifica se o usuário atual autenticado possui privilégios de Administrador (`ADMIN`).
- * Utilizado para proteger endpoints e telas de gestão global de usuários.
- *
- * @returns Objeto do usuário se for ADMIN ou `null` caso contrário
  */
 export async function requireAdmin() {
   const user = await getCurrentUser();
