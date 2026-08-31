@@ -1,8 +1,10 @@
--- Migration SQL para Inicialização do Banco de Dados no Supabase (PostgreSQL)
--- Gerado a partir do schema.prisma do Life OS
+-- ==============================================================================
+-- LIFE OS - MIGRAÇÃO IDEMPOTENTE PARA SUPABASE (POSTGRESQL)
+-- Pode ser executada múltiplas vezes sem erros de "relation already exists"
+-- ==============================================================================
 
--- CreateTable
-CREATE TABLE "User" (
+-- 1. Criação das Tabelas (se não existirem)
+CREATE TABLE IF NOT EXISTS "User" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL DEFAULT 'Eduardo Felipe',
     "email" TEXT NOT NULL,
@@ -11,12 +13,10 @@ CREATE TABLE "User" (
     "role" TEXT NOT NULL DEFAULT 'USER',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "UserSettings" (
+CREATE TABLE IF NOT EXISTS "UserSettings" (
     "id" TEXT NOT NULL DEFAULT 'user_default',
     "name" TEXT NOT NULL DEFAULT 'Eduardo Felipe',
     "email" TEXT NOT NULL DEFAULT 'eduardo.felipe@lifeos.com',
@@ -28,12 +28,10 @@ CREATE TABLE "UserSettings" (
     "aiProvider" TEXT NOT NULL DEFAULT 'HYBRID',
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "UserSettings_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Category" (
+CREATE TABLE IF NOT EXISTS "Category" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
@@ -43,12 +41,10 @@ CREATE TABLE "Category" (
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "Category_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Project" (
+CREATE TABLE IF NOT EXISTS "Project" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "description" TEXT,
@@ -65,12 +61,10 @@ CREATE TABLE "Project" (
     "categoryId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "Project_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Course" (
+CREATE TABLE IF NOT EXISTS "Course" (
     "id" TEXT NOT NULL,
     "name" TEXT NOT NULL,
     "institution" TEXT,
@@ -86,12 +80,10 @@ CREATE TABLE "Course" (
     "categoryId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "Course_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Book" (
+CREATE TABLE IF NOT EXISTS "Book" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "author" TEXT,
@@ -109,12 +101,10 @@ CREATE TABLE "Book" (
     "categoryId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "Book_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "FinancialReminder" (
+CREATE TABLE IF NOT EXISTS "FinancialReminder" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
@@ -132,12 +122,10 @@ CREATE TABLE "FinancialReminder" (
     "categoryId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "FinancialReminder_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Task" (
+CREATE TABLE IF NOT EXISTS "Task" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "description" TEXT,
@@ -166,12 +154,10 @@ CREATE TABLE "Task" (
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "Task_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "Subtask" (
+CREATE TABLE IF NOT EXISTS "Subtask" (
     "id" TEXT NOT NULL,
     "taskId" TEXT NOT NULL,
     "title" TEXT NOT NULL,
@@ -179,12 +165,10 @@ CREATE TABLE "Subtask" (
     "sortOrder" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "Subtask_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "ActivityLog" (
+CREATE TABLE IF NOT EXISTS "ActivityLog" (
     "id" TEXT NOT NULL,
     "entityType" TEXT NOT NULL,
     "entityId" TEXT NOT NULL,
@@ -192,23 +176,19 @@ CREATE TABLE "ActivityLog" (
     "title" TEXT NOT NULL,
     "details" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
     CONSTRAINT "ActivityLog_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "ChatSession" (
+CREATE TABLE IF NOT EXISTS "ChatSession" (
     "id" TEXT NOT NULL,
     "title" TEXT NOT NULL DEFAULT 'Nova Conversa',
     "userId" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
-
     CONSTRAINT "ChatSession_pkey" PRIMARY KEY ("id")
 );
 
--- CreateTable
-CREATE TABLE "ChatMessage" (
+CREATE TABLE IF NOT EXISTS "ChatMessage" (
     "id" TEXT NOT NULL,
     "sessionId" TEXT NOT NULL,
     "role" TEXT NOT NULL,
@@ -217,61 +197,78 @@ CREATE TABLE "ChatMessage" (
     "toolResults" TEXT,
     "pendingAction" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-
-    CONSTRAINT "ChatMessage_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "ChatSession" ("id") ON DELETE CASCADE ON UPDATE CASCADE
+    CONSTRAINT "ChatMessage_pkey" PRIMARY KEY ("id")
 );
 
--- CreateIndex
-CREATE UNIQUE INDEX "User_email_key" ON "User"("email");
+-- 2. Índices Únicos
+CREATE UNIQUE INDEX IF NOT EXISTS "User_email_key" ON "User"("email");
+CREATE UNIQUE INDEX IF NOT EXISTS "Category_slug_key" ON "Category"("slug");
 
--- CreateIndex
-CREATE UNIQUE INDEX "Category_slug_key" ON "Category"("slug");
+-- 3. Adição Segura de Foreign Keys (sem duplicar)
+DO $$ BEGIN
+  ALTER TABLE "Project" ADD CONSTRAINT "Project_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Project" ADD CONSTRAINT "Project_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "Project" ADD CONSTRAINT "Project_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Project" ADD CONSTRAINT "Project_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "Course" ADD CONSTRAINT "Course_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Course" ADD CONSTRAINT "Course_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "Course" ADD CONSTRAINT "Course_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Course" ADD CONSTRAINT "Course_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "Book" ADD CONSTRAINT "Book_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Book" ADD CONSTRAINT "Book_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "Book" ADD CONSTRAINT "Book_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Book" ADD CONSTRAINT "Book_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "FinancialReminder" ADD CONSTRAINT "FinancialReminder_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "FinancialReminder" ADD CONSTRAINT "FinancialReminder_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "FinancialReminder" ADD CONSTRAINT "FinancialReminder_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "FinancialReminder" ADD CONSTRAINT "FinancialReminder_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "Task" ADD CONSTRAINT "Task_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Task" ADD CONSTRAINT "Task_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "Task" ADD CONSTRAINT "Task_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Task" ADD CONSTRAINT "Task_categoryId_fkey" FOREIGN KEY ("categoryId") REFERENCES "Category"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "Task" ADD CONSTRAINT "Task_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Task" ADD CONSTRAINT "Task_projectId_fkey" FOREIGN KEY ("projectId") REFERENCES "Project"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "Task" ADD CONSTRAINT "Task_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "Course"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Task" ADD CONSTRAINT "Task_courseId_fkey" FOREIGN KEY ("courseId") REFERENCES "Course"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "Task" ADD CONSTRAINT "Task_bookId_fkey" FOREIGN KEY ("bookId") REFERENCES "Book"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Task" ADD CONSTRAINT "Task_bookId_fkey" FOREIGN KEY ("bookId") REFERENCES "Book"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "Task" ADD CONSTRAINT "Task_financialReminderId_fkey" FOREIGN KEY ("financialReminderId") REFERENCES "FinancialReminder"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Task" ADD CONSTRAINT "Task_financialReminderId_fkey" FOREIGN KEY ("financialReminderId") REFERENCES "FinancialReminder"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "Subtask" ADD CONSTRAINT "Subtask_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "Subtask" ADD CONSTRAINT "Subtask_taskId_fkey" FOREIGN KEY ("taskId") REFERENCES "Task"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+DO $$ BEGIN
+  ALTER TABLE "ChatSession" ADD CONSTRAINT "ChatSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 
--- AddForeignKey
-ALTER TABLE "ChatSession" ADD CONSTRAINT "ChatSession_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
-
+DO $$ BEGIN
+  ALTER TABLE "ChatMessage" ADD CONSTRAINT "ChatMessage_sessionId_fkey" FOREIGN KEY ("sessionId") REFERENCES "ChatSession"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
