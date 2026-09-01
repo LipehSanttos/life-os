@@ -1,6 +1,7 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   LayoutDashboard,
@@ -102,8 +103,15 @@ export function Sidebar({ onOpenTaskModal }: SidebarProps) {
       {/* Brand Header */}
       <div className="flex items-center justify-between h-16 px-4 border-b border-border/40">
         <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 via-primary to-indigo-400 text-white shadow-md shadow-primary/25 flex-shrink-0">
-            <Sparkles className="w-5 h-5 animate-pulse" />
+          <div className="flex items-center justify-center w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-primary/20 flex-shrink-0 bg-background/80 border border-border/40 p-1">
+            <Image
+              src="/logo.svg"
+              alt="Life OS Logo"
+              width={40}
+              height={40}
+              className="w-full h-full object-contain"
+              priority
+            />
           </div>
           {!collapsed && (
             <div className="flex flex-col">

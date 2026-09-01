@@ -1,5 +1,6 @@
 "use client";
 import React, { useState, Suspense } from "react";
+import Image from "next/image";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Sparkles, Lock, Mail, ArrowRight, Eye, EyeOff } from "lucide-react";
 import { toast } from "sonner";
@@ -51,8 +52,15 @@ function LoginForm() {
       <div className="p-8 sm:p-10 rounded-3xl border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-indigo-600 via-primary to-indigo-400 text-white shadow-xl shadow-primary/30 mb-2">
-            <Sparkles className="w-7 h-7 animate-pulse" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl overflow-hidden shadow-xl shadow-primary/25 mb-2 bg-background/80 border border-border/60 p-1.5">
+            <Image
+              src="/logo.svg"
+              alt="Life OS Logo"
+              width={64}
+              height={64}
+              className="w-full h-full object-contain"
+              priority
+            />
           </div>
           <h1 className="text-2xl font-black tracking-tight text-foreground">
             Life OS & IA

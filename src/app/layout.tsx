@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "Life OS - Sistema de Gestão Pessoal & IA",
   description: "Life OS: Gerenciamento inteligente de atividades, compromissos, projetos, estudos, finanças e tarefas cotidianas com inteligência artificial.",
+  icons: {
+    icon: "/logo.svg",
+  },
 };
 
 export default function RootLayout({
