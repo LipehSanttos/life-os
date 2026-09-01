@@ -54,3 +54,4 @@ ON CONFLICT (id) DO NOTHING;
 
 -- 4. VERIFICAR RESULTADO
 SELECT id, name, email, role FROM public."User";
+

@@ -19,10 +19,11 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("iteam_auth_token")?.value;
 
-  // Permite acesso irrestrito a arquivos estáticos e rotas de autenticação
+  // Permite acesso irrestrito a arquivos estáticos, healthcheck e rotas de autenticação
   if (
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api/auth") ||
+    pathname.startsWith("/api/health") ||
     hasStaticExtension(pathname)
   ) {
     return NextResponse.next();
