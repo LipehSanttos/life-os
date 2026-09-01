@@ -1,7 +1,5 @@
-import { PrismaClient } from "@prisma/client";
+import { prisma } from "@/lib/db";
 import crypto from "crypto";
-
-const prisma = new PrismaClient();
 
 function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString("hex");
@@ -29,10 +27,7 @@ async function main() {
 
   await prisma.userSettings.upsert({
     where: { id: "user_default" },
-    update: {
-      name: "Eduardo Felipe",
-      email: "eduardo.felipe@lifeos.com",
-    },
+    update: {},
     create: {
       id: "user_default",
       name: "Eduardo Felipe",
@@ -40,9 +35,11 @@ async function main() {
       theme: "dark",
       autoConfirmAiActions: false,
       notificationsEnabled: true,
+      aiProvider: "HYBRID",
     },
   });
 
+  // Default Categories
   const defaultCategories = [
     { name: "Estudos", slug: "estudos", color: "#8b5cf6", icon: "GraduationCap", isSystem: true, sortOrder: 1 },
     { name: "Faculdade", slug: "faculdade", color: "#ec4899", icon: "BookOpenCheck", isSystem: true, sortOrder: 2 },
@@ -62,45 +59,21 @@ async function main() {
   for (const cat of defaultCategories) {
     await prisma.category.upsert({
       where: { slug: cat.slug },
-      update: { name: cat.name, color: cat.color, icon: cat.icon },
+      update: {
+        name: cat.name,
+        color: cat.color,
+        icon: cat.icon,
+        sortOrder: cat.sortOrder,
+      },
       create: cat,
     });
   }
 
-  // Link existing unassigned tasks, projects, courses, books, finances to the Admin user
-  await prisma.task.updateMany({
-    where: { userId: null },
-    data: { userId: adminUser.id },
-  });
-  await prisma.project.updateMany({
-    where: { userId: null },
-    data: { userId: adminUser.id },
-  });
-  await prisma.course.updateMany({
-    where: { userId: null },
-    data: { userId: adminUser.id },
-  });
-  await prisma.book.updateMany({
-    where: { userId: null },
-    data: { userId: adminUser.id },
-  });
-  await prisma.financialReminder.updateMany({
-    where: { userId: null },
-    data: { userId: adminUser.id },
-  });
-  await prisma.chatSession.updateMany({
-    where: { userId: null },
-    data: { userId: adminUser.id },
-  });
-
-  console.log("✅ Seed com isolamento multi-tenant concluído!");
+  console.log("✅ Seed concluído com sucesso!");
 }
 
 main()
   .catch((e) => {
-    console.error("Erro no seed:", e);
+    console.error("❌ Erro no seed:", e);
     process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
   });
