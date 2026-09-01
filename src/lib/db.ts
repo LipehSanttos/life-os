@@ -5,6 +5,7 @@
  * todas as operações diretamente com o Supabase SDK através de NEXT_PUBLIC_SUPABASE_URL e chaves.
  */
 
+import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 function applyWhereClause(query: any, where?: Record<string, any>): any {
@@ -87,6 +88,26 @@ function applyOrderBy(query: any, orderBy?: any): any {
   return query;
 }
 
+function buildSelectFields(include?: any, select?: any): string {
+  if (select) {
+    return Object.keys(select).join(",");
+  }
+  if (!include) return "*";
+
+  const includesList: string[] = ["*"];
+  if (include.category) includesList.push("category:Category(*)");
+  if (include.project) includesList.push("project:Project(*)");
+  if (include.course) includesList.push("course:Course(*)");
+  if (include.book) includesList.push("book:Book(*)");
+  if (include.subtasks) includesList.push("subtasks:Subtask(*)");
+  if (include.tasks) includesList.push("tasks:Task(*)");
+  if (include.financialReminder) includesList.push("financialReminder:FinancialReminder(*)");
+  if (include.messages) includesList.push("messages:ChatMessage(*)");
+  if (include.user) includesList.push("user:User(id,name,email,avatarUrl,role,createdAt)");
+
+  return includesList.join(",");
+}
+
 export interface TableClient {
   findMany(args?: {
     where?: any;
@@ -164,22 +185,7 @@ function createTableClient(tableName: string): TableClient {
       take?: number;
       skip?: number;
     } = {}): Promise<any[]> {
-      let selectFields = "*";
-      if (args.select) {
-        selectFields = Object.keys(args.select).join(",");
-      }
-
-      // Expansão de relacionamentos quando include estiver presente
-      if (args.include) {
-        const includesList: string[] = ["*"];
-        if (args.include.category) includesList.push("category:Category(*)");
-        if (args.include.project) includesList.push("project:Project(*)");
-        if (args.include.course) includesList.push("course:Course(*)");
-        if (args.include.book) includesList.push("book:Book(*)");
-        if (args.include.subtasks) includesList.push("subtasks:Subtask(*)");
-        if (args.include.user) includesList.push("user:User(*)");
-        selectFields = includesList.join(",");
-      }
+      const selectFields = buildSelectFields(args.include, args.select);
 
       let query: any = supabaseAdmin.from(tableName).select(selectFields);
       query = applyWhereClause(query, args.where);
@@ -215,20 +221,7 @@ function createTableClient(tableName: string): TableClient {
       include?: any;
       orderBy?: any;
     } = {}): Promise<any | null> {
-      let selectFields = "*";
-      if (args.select) {
-        selectFields = Object.keys(args.select).join(",");
-      }
-      if (args.include) {
-        const includesList: string[] = ["*"];
-        if (args.include.category) includesList.push("category:Category(*)");
-        if (args.include.project) includesList.push("project:Project(*)");
-        if (args.include.course) includesList.push("course:Course(*)");
-        if (args.include.book) includesList.push("book:Book(*)");
-        if (args.include.subtasks) includesList.push("subtasks:Subtask(*)");
-        if (args.include.user) includesList.push("user:User(*)");
-        selectFields = includesList.join(",");
-      }
+      const selectFields = buildSelectFields(args.include, args.select);
 
       let query: any = supabaseAdmin.from(tableName).select(selectFields);
       query = applyWhereClause(query, args.where);
@@ -245,20 +238,7 @@ function createTableClient(tableName: string): TableClient {
       select?: any;
       include?: any;
     }): Promise<any | null> {
-      let selectFields = "*";
-      if (args.select) {
-        selectFields = Object.keys(args.select).join(",");
-      }
-      if (args.include) {
-        const includesList: string[] = ["*"];
-        if (args.include.category) includesList.push("category:Category(*)");
-        if (args.include.project) includesList.push("project:Project(*)");
-        if (args.include.course) includesList.push("course:Course(*)");
-        if (args.include.book) includesList.push("book:Book(*)");
-        if (args.include.subtasks) includesList.push("subtasks:Subtask(*)");
-        if (args.include.user) includesList.push("user:User(*)");
-        selectFields = includesList.join(",");
-      }
+      const selectFields = buildSelectFields(args.include, args.select);
 
       let query: any = supabaseAdmin.from(tableName).select(selectFields);
       query = applyWhereClause(query, args.where);
@@ -272,24 +252,14 @@ function createTableClient(tableName: string): TableClient {
     async create(args: { data: Record<string, any>; select?: any; include?: any }): Promise<any> {
       const payload: Record<string, any> = {
         ...args.data,
-        id: args.data.id || `id_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        id: args.data.id || crypto.randomUUID(),
       };
 
       if (tablesWithUpdatedAt.has(tableName)) {
         payload.updatedAt = new Date().toISOString();
       }
 
-      let selectFields = "*";
-      if (args.include) {
-        const includesList: string[] = ["*"];
-        if (args.include.category) includesList.push("category:Category(*)");
-        if (args.include.project) includesList.push("project:Project(*)");
-        if (args.include.course) includesList.push("course:Course(*)");
-        if (args.include.book) includesList.push("book:Book(*)");
-        if (args.include.subtasks) includesList.push("subtasks:Subtask(*)");
-        if (args.include.user) includesList.push("user:User(*)");
-        selectFields = includesList.join(",");
-      }
+      const selectFields = buildSelectFields(args.include, args.select);
 
       const { data, error } = await supabaseAdmin
         .from(tableName)
@@ -305,7 +275,7 @@ function createTableClient(tableName: string): TableClient {
       const payload = args.data.map((item) => {
         const itemPayload: Record<string, any> = {
           ...item,
-          id: item.id || `id_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          id: item.id || crypto.randomUUID(),
         };
         if (tablesWithUpdatedAt.has(tableName)) {
           itemPayload.updatedAt = new Date().toISOString();
@@ -327,17 +297,7 @@ function createTableClient(tableName: string): TableClient {
         updatePayload.updatedAt = new Date().toISOString();
       }
 
-      let selectFields = "*";
-      if (args.include) {
-        const includesList: string[] = ["*"];
-        if (args.include.category) includesList.push("category:Category(*)");
-        if (args.include.project) includesList.push("project:Project(*)");
-        if (args.include.course) includesList.push("course:Course(*)");
-        if (args.include.book) includesList.push("book:Book(*)");
-        if (args.include.subtasks) includesList.push("subtasks:Subtask(*)");
-        if (args.include.user) includesList.push("user:User(*)");
-        selectFields = includesList.join(",");
-      }
+      const selectFields = buildSelectFields(args.include, args.select);
 
       let query: any = supabaseAdmin.from(tableName).update(updatePayload);
       query = applyWhereClause(query, args.where);
