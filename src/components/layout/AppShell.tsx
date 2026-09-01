@@ -16,11 +16,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+      if (!e || !e.key) return;
+      const key = e.key.toLowerCase();
+      if ((e.metaKey || e.ctrlKey) && key === "k") {
         e.preventDefault();
         setSearchModalOpen((prev) => !prev);
       } else if (
-        e.key.toLowerCase() === "n" &&
+        key === "n" &&
         !["INPUT", "TEXTAREA", "SELECT"].includes((e.target as HTMLElement)?.tagName)
       ) {
         e.preventDefault();
