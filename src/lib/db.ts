@@ -19,8 +19,11 @@ function applyWhereClause(query: any, where?: Record<string, any>): any {
           const subKey = Object.keys(cond)[0];
           const subVal = cond[subKey];
           if (typeof subVal === "object" && subVal !== null) {
-            if ("equals" in subVal) return `${subKey}.eq.${subVal.equals}`;
+            if ("equals" in subVal) return `${subKey}.ilike.${subVal.equals}`;
             if ("contains" in subVal) return `${subKey}.ilike.%${subVal.contains}%`;
+          }
+          if (subKey === "email" || subKey === "name") {
+            return `${subKey}.ilike.${subVal}`;
           }
           return `${subKey}.eq.${subVal}`;
         })

@@ -72,20 +72,13 @@ function LoginForm() {
             <input
               type="text"
               value={login}
-              onChange={(e) => {
-                // Disallow spaces and restrict to alphanumeric, dot and @
-                const sanitized = e.target.value.replace(/[^a-zA-Z0-9.@]/g, "");
-                setLogin(sanitized);
-              }}
-              placeholder="ex: eduardo.felipe ou eduardo.felipe@lifeos.com"
+              onChange={(e) => setLogin(e.target.value)}
+              placeholder="Digite seu e-mail ou nome de usuário"
               disabled={loading}
               className="w-full px-4 py-3 rounded-2xl border border-border/70 bg-background text-foreground text-xs focus:ring-2 focus:ring-primary/40 outline-none font-medium shadow-xs transition-all placeholder:text-muted-foreground/60"
               autoFocus
               autoComplete="username"
             />
-            <p className="text-[10px] text-muted-foreground mt-1 font-medium">
-              Permitido apenas letras, números e ponto (.)
-            </p>
           </div>
 
           <div>
