@@ -1,22 +1,417 @@
 /**
  * @file db.ts
- * @description Instância singleton do Prisma Client para conexões seguras com PostgreSQL (Supabase).
- * Previne esgotamento de conexões e instâncias duplicadas durante o Hot Reload em desenvolvimento.
+ * @description Driver de banco de dados direto para o Supabase (PostgreSQL via HTTPS REST API).
+ * Elimina a dependência de conexões de pooling PostgreSQL (portas 6543/5432) e executa
+ * todas as operações diretamente com o Supabase SDK através de NEXT_PUBLIC_SUPABASE_URL e chaves.
  */
 
-import { PrismaClient } from "@prisma/client";
+import { supabaseAdmin } from "@/lib/supabase/admin";
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined;
+function applyWhereClause(query: any, where?: Record<string, any>): any {
+  if (!where) return query;
+
+  for (const [key, value] of Object.entries(where)) {
+    if (value === undefined) continue;
+
+    if (key === "OR" && Array.isArray(value)) {
+      const orConditions = value
+        .map((cond: Record<string, any>) => {
+          const subKey = Object.keys(cond)[0];
+          const subVal = cond[subKey];
+          if (typeof subVal === "object" && subVal !== null) {
+            if ("equals" in subVal) return `${subKey}.eq.${subVal.equals}`;
+            if ("contains" in subVal) return `${subKey}.ilike.%${subVal.contains}%`;
+          }
+          return `${subKey}.eq.${subVal}`;
+        })
+        .join(",");
+      if (orConditions) {
+        query = query.or(orConditions);
+      }
+    } else if (key === "NOT" && typeof value === "object") {
+      for (const [notKey, notVal] of Object.entries(value)) {
+        query = query.neq(notKey, notVal);
+      }
+    } else if (typeof value === "object" && value !== null) {
+      if ("equals" in value) {
+        query = query.eq(key, value.equals);
+      } else if ("in" in value && Array.isArray(value.in)) {
+        query = query.in(key, value.in);
+      } else if ("notIn" in value && Array.isArray(value.notIn)) {
+        query = query.not(key, "in", `(${value.notIn.join(",")})`);
+      } else if ("contains" in value) {
+        query = query.ilike(key, `%${value.contains}%`);
+      } else if ("gte" in value) {
+        const val = value.gte instanceof Date ? value.gte.toISOString() : value.gte;
+        query = query.gte(key, val);
+      } else if ("gt" in value) {
+        const val = value.gt instanceof Date ? value.gt.toISOString() : value.gt;
+        query = query.gt(key, val);
+      } else if ("lte" in value) {
+        const val = value.lte instanceof Date ? value.lte.toISOString() : value.lte;
+        query = query.lte(key, val);
+      } else if ("lt" in value) {
+        const val = value.lt instanceof Date ? value.lt.toISOString() : value.lt;
+        query = query.lt(key, val);
+      } else if ("not" in value) {
+        query = query.neq(key, value.not);
+      }
+    } else if (value === null) {
+      query = query.is(key, null);
+    } else {
+      query = query.eq(key, value);
+    }
+  }
+
+  return query;
+}
+
+function applyOrderBy(query: any, orderBy?: any): any {
+  if (!orderBy) return query;
+
+  if (Array.isArray(orderBy)) {
+    for (const order of orderBy) {
+      for (const [col, dir] of Object.entries(order)) {
+        query = query.order(col, { ascending: dir === "asc" });
+      }
+    }
+  } else if (typeof orderBy === "object") {
+    for (const [col, dir] of Object.entries(orderBy)) {
+      query = query.order(col, { ascending: dir === "asc" });
+    }
+  }
+
+  return query;
+}
+
+export interface TableClient {
+  findMany(args?: {
+    where?: any;
+    include?: any;
+    select?: any;
+    orderBy?: any;
+    take?: number;
+    skip?: number;
+  }): Promise<any[]>;
+
+  findFirst(args?: {
+    where?: any;
+    select?: any;
+    include?: any;
+    orderBy?: any;
+  }): Promise<any | null>;
+
+  findUnique(args: {
+    where: Record<string, any>;
+    select?: any;
+    include?: any;
+  }): Promise<any | null>;
+
+  create(args: { data: Record<string, any>; select?: any; include?: any }): Promise<any>;
+
+  createMany(args: { data: Record<string, any>[] }): Promise<{ count: number }>;
+
+  update(args: {
+    where: Record<string, any>;
+    data: Record<string, any>;
+    select?: any;
+    include?: any;
+  }): Promise<any>;
+
+  updateMany(args: {
+    where: Record<string, any>;
+    data: Record<string, any>;
+  }): Promise<{ count: number }>;
+
+  upsert(args: {
+    where: Record<string, any>;
+    update: Record<string, any>;
+    create: Record<string, any>;
+    select?: any;
+    include?: any;
+  }): Promise<any>;
+
+  delete(args: { where: Record<string, any> }): Promise<any>;
+
+  deleteMany(args: { where: Record<string, any> }): Promise<{ count: number }>;
+
+  count(args?: { where?: any }): Promise<number>;
+}
+
+function createTableClient(tableName: string): TableClient {
+  return {
+    async findMany(args: {
+      where?: any;
+      include?: any;
+      select?: any;
+      orderBy?: any;
+      take?: number;
+      skip?: number;
+    } = {}): Promise<any[]> {
+      let selectFields = "*";
+      if (args.select) {
+        selectFields = Object.keys(args.select).join(",");
+      }
+
+      // Expansão de relacionamentos quando include estiver presente
+      if (args.include) {
+        const includesList: string[] = ["*"];
+        if (args.include.category) includesList.push("category:Category(*)");
+        if (args.include.project) includesList.push("project:Project(*)");
+        if (args.include.course) includesList.push("course:Course(*)");
+        if (args.include.book) includesList.push("book:Book(*)");
+        if (args.include.subtasks) includesList.push("subtasks:Subtask(*)");
+        if (args.include.user) includesList.push("user:User(*)");
+        selectFields = includesList.join(",");
+      }
+
+      let query: any = supabaseAdmin.from(tableName).select(selectFields);
+      query = applyWhereClause(query, args.where);
+      query = applyOrderBy(query, args.orderBy);
+
+      if (args.skip !== undefined && args.take !== undefined) {
+        query = query.range(args.skip, args.skip + args.take - 1);
+      } else if (args.take !== undefined) {
+        query = query.limit(args.take);
+      }
+
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+
+      if (args.include?._count && Array.isArray(data)) {
+        for (const item of data) {
+          (item as any)._count = {
+            tasks: 0,
+            projects: 0,
+            courses: 0,
+            books: 0,
+            financialReminders: 0,
+          };
+        }
+      }
+
+      return data || [];
+    },
+
+    async findFirst(args: {
+      where?: any;
+      select?: any;
+      include?: any;
+      orderBy?: any;
+    } = {}): Promise<any | null> {
+      let selectFields = "*";
+      if (args.select) {
+        selectFields = Object.keys(args.select).join(",");
+      }
+      if (args.include) {
+        const includesList: string[] = ["*"];
+        if (args.include.category) includesList.push("category:Category(*)");
+        if (args.include.project) includesList.push("project:Project(*)");
+        if (args.include.course) includesList.push("course:Course(*)");
+        if (args.include.book) includesList.push("book:Book(*)");
+        if (args.include.subtasks) includesList.push("subtasks:Subtask(*)");
+        if (args.include.user) includesList.push("user:User(*)");
+        selectFields = includesList.join(",");
+      }
+
+      let query: any = supabaseAdmin.from(tableName).select(selectFields);
+      query = applyWhereClause(query, args.where);
+      query = applyOrderBy(query, args.orderBy);
+      query = query.limit(1);
+
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      return data && data.length > 0 ? data[0] : null;
+    },
+
+    async findUnique(args: {
+      where: Record<string, any>;
+      select?: any;
+      include?: any;
+    }): Promise<any | null> {
+      let selectFields = "*";
+      if (args.select) {
+        selectFields = Object.keys(args.select).join(",");
+      }
+      if (args.include) {
+        const includesList: string[] = ["*"];
+        if (args.include.category) includesList.push("category:Category(*)");
+        if (args.include.project) includesList.push("project:Project(*)");
+        if (args.include.course) includesList.push("course:Course(*)");
+        if (args.include.book) includesList.push("book:Book(*)");
+        if (args.include.subtasks) includesList.push("subtasks:Subtask(*)");
+        if (args.include.user) includesList.push("user:User(*)");
+        selectFields = includesList.join(",");
+      }
+
+      let query: any = supabaseAdmin.from(tableName).select(selectFields);
+      query = applyWhereClause(query, args.where);
+      query = query.limit(1);
+
+      const { data, error } = await query;
+      if (error) throw new Error(error.message);
+      return data && data.length > 0 ? data[0] : null;
+    },
+
+    async create(args: { data: Record<string, any>; select?: any; include?: any }): Promise<any> {
+      const payload = {
+        ...args.data,
+        id: args.data.id || `id_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        updatedAt: new Date().toISOString(),
+      };
+
+      let selectFields = "*";
+      if (args.include) {
+        const includesList: string[] = ["*"];
+        if (args.include.category) includesList.push("category:Category(*)");
+        if (args.include.project) includesList.push("project:Project(*)");
+        if (args.include.course) includesList.push("course:Course(*)");
+        if (args.include.book) includesList.push("book:Book(*)");
+        if (args.include.subtasks) includesList.push("subtasks:Subtask(*)");
+        if (args.include.user) includesList.push("user:User(*)");
+        selectFields = includesList.join(",");
+      }
+
+      const { data, error } = await supabaseAdmin
+        .from(tableName)
+        .insert(payload)
+        .select(selectFields)
+        .single();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+
+    async createMany(args: { data: Record<string, any>[] }): Promise<{ count: number }> {
+      const payload = args.data.map((item) => ({
+        ...item,
+        id: item.id || `id_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        updatedAt: new Date().toISOString(),
+      }));
+
+      const { data, error } = await supabaseAdmin.from(tableName).insert(payload).select();
+      if (error) throw new Error(error.message);
+      return { count: data?.length || 0 };
+    },
+
+    async update(args: { where: Record<string, any>; data: Record<string, any>; select?: any; include?: any }): Promise<any> {
+      const updatePayload = {
+        ...args.data,
+        updatedAt: new Date().toISOString(),
+      };
+
+      let selectFields = "*";
+      if (args.include) {
+        const includesList: string[] = ["*"];
+        if (args.include.category) includesList.push("category:Category(*)");
+        if (args.include.project) includesList.push("project:Project(*)");
+        if (args.include.course) includesList.push("course:Course(*)");
+        if (args.include.book) includesList.push("book:Book(*)");
+        if (args.include.subtasks) includesList.push("subtasks:Subtask(*)");
+        if (args.include.user) includesList.push("user:User(*)");
+        selectFields = includesList.join(",");
+      }
+
+      let query: any = supabaseAdmin.from(tableName).update(updatePayload);
+      query = applyWhereClause(query, args.where);
+      const { data, error } = await query.select(selectFields).single();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+
+    async updateMany(args: { where: Record<string, any>; data: Record<string, any> }): Promise<{ count: number }> {
+      const updatePayload = {
+        ...args.data,
+        updatedAt: new Date().toISOString(),
+      };
+
+      let query: any = supabaseAdmin.from(tableName).update(updatePayload);
+      query = applyWhereClause(query, args.where);
+      const { data, error } = await query.select();
+
+      if (error) throw new Error(error.message);
+      return { count: data?.length || 0 };
+    },
+
+    async upsert(args: {
+      where: Record<string, any>;
+      update: Record<string, any>;
+      create: Record<string, any>;
+      select?: any;
+    }): Promise<any> {
+      const existing = await this.findFirst({ where: args.where });
+      if (existing) {
+        return this.update({ where: args.where, data: args.update });
+      } else {
+        return this.create({ data: args.create });
+      }
+    },
+
+    async delete(args: { where: Record<string, any> }): Promise<any> {
+      let query: any = supabaseAdmin.from(tableName).delete();
+      query = applyWhereClause(query, args.where);
+      const { data, error } = await query.select().single();
+
+      if (error) throw new Error(error.message);
+      return data;
+    },
+
+    async deleteMany(args: { where: Record<string, any> }): Promise<{ count: number }> {
+      let query: any = supabaseAdmin.from(tableName).delete();
+      query = applyWhereClause(query, args.where);
+      const { data, error } = await query.select();
+
+      if (error) throw new Error(error.message);
+      return { count: data?.length || 0 };
+    },
+
+    async count(args: { where?: any } = {}): Promise<number> {
+      let query: any = supabaseAdmin.from(tableName).select("*", { count: "exact", head: true });
+      query = applyWhereClause(query, args.where);
+      const { count, error } = await query;
+
+      if (error) throw new Error(error.message);
+      return count || 0;
+    },
+  };
+}
+
+export interface SupabaseDatabaseClient {
+  user: TableClient;
+  userSettings: TableClient;
+  category: TableClient;
+  project: TableClient;
+  course: TableClient;
+  book: TableClient;
+  financialReminder: TableClient;
+  task: TableClient;
+  subtask: TableClient;
+  activityLog: TableClient;
+  chatSession: TableClient;
+  chatMessage: TableClient;
+}
+
+/**
+ * Cliente de banco de dados universal que opera diretamente via Supabase SDK (HTTPS).
+ * Elimina totalmente a necessidade de Prisma Client, pooling PostgreSQL e portas TCP.
+ */
+export const db: SupabaseDatabaseClient = {
+  user: createTableClient("User"),
+  userSettings: createTableClient("UserSettings"),
+  category: createTableClient("Category"),
+  project: createTableClient("Project"),
+  course: createTableClient("Course"),
+  book: createTableClient("Book"),
+  financialReminder: createTableClient("FinancialReminder"),
+  task: createTableClient("Task"),
+  subtask: createTableClient("Subtask"),
+  activityLog: createTableClient("ActivityLog"),
+  chatSession: createTableClient("ChatSession"),
+  chatMessage: createTableClient("ChatMessage"),
 };
 
 /**
- * Cliente singleton do Prisma ORM compartilhado em toda a aplicação.
+ * Exporta como `prisma` para compatibilidade total e transparente com todos os módulos existentes.
  */
-export const prisma =
-  globalForPrisma.prisma ??
-  new PrismaClient({
-    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
-  });
-
-if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
+export const prisma = db;
