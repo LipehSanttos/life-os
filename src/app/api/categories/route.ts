@@ -1,30 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/db";
 
 export async function GET(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+    }
     const categories = await prisma.category.findMany({
-      include: {
-        _count: {
-          select: {
-            tasks: true,
-            projects: true,
-            courses: true,
-            books: true,
-            financialReminders: true,
-          },
-        },
-      },
       orderBy: { sortOrder: "asc" },
     });
     return NextResponse.json(categories);
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Erro ao buscar categorias." }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Erro ao buscar categorias." }, { status: 500 });
   }
 }
 
 export async function POST(req: NextRequest) {
   try {
+    const user = await getCurrentUser();
+    if (!user) {
+      return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+    }
+
     const body = await req.json();
     const { name, color = "#6366f1", icon = "Folder", sortOrder = 0 } = body;
 
@@ -51,7 +50,7 @@ export async function POST(req: NextRequest) {
     });
 
     return NextResponse.json(category, { status: 201 });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message || "Erro ao criar categoria." }, { status: 500 });
+  } catch {
+    return NextResponse.json({ error: "Erro ao criar categoria." }, { status: 500 });
   }
 }

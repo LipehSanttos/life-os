@@ -1,18 +1,25 @@
 /**
  * @file auth.ts
- * @description Módulo central de autenticação e gestão de usuários integrado ao Supabase Auth & Banco de Dados.
- * Suporta tokens Supabase, controle de sessões, controle de permissões (RBAC) e sincronização de perfis.
+ * @description Módulo central de autenticação — tokens, sessões e permissões.
+ * SEGURANÇA: Sem senhas hardcoded, sem plaintext comparison, PBKDF2 seguro.
  */
 
 import crypto from "crypto";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/db";
-import { supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase/admin";
 
-/** Chave secreta para assinatura dos tokens de autenticação (HMAC) */
-const AUTH_SECRET = process.env.AUTH_SECRET || "life-os-super-secret-production-key-2026";
+/** Segredo para assinatura HMAC — OBRIGATÓRIO via variável de ambiente */
+const AUTH_SECRET = (() => {
+  const secret = process.env.AUTH_SECRET;
+  if (!secret || secret.length < 32) {
+    if (process.env.NODE_ENV === "production") {
+      throw new Error("[auth] AUTH_SECRET não configurada ou muito curta (mínimo 32 caracteres).");
+    }
+    return "dev-only-secret-not-for-production-use-32chars";
+  }
+  return secret;
+})();
 
-/** Nome do cookie HTTP-Only utilizado para persistir a sessão do usuário */
 export const AUTH_COOKIE_NAME = "iteam_auth_token";
 
 /**
@@ -25,78 +32,69 @@ export function isValidUsernameOrEmail(login: string): { valid: boolean; error?:
 
   const trimmed = login.trim();
 
-  if (/\s/.test(trimmed)) {
-    return { valid: false, error: "O nome de usuário não pode conter espaços." };
-  }
-
   if (trimmed.includes("@")) {
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    const emailRegex = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
     if (!emailRegex.test(trimmed)) {
       return { valid: false, error: "Formato de e-mail inválido." };
     }
     return { valid: true };
   }
 
-  const usernameRegex = /^[a-zA-Z0-9._-]+$/;
-  if (!usernameRegex.test(trimmed)) {
-    return { valid: false, error: "O nome de usuário aceita apenas letras, números, ponto (.) e traço (-)." };
+  if (trimmed.length < 2) {
+    return { valid: false, error: "O nome de usuário deve ter pelo menos 2 caracteres." };
   }
 
   return { valid: true };
 }
 
 /**
- * Gera um hash criptográfico seguro para a senha utilizando PBKDF2 com Salt aleatório de 16 bytes.
+ * Gera hash criptográfico seguro PBKDF2 com sal de 16 bytes.
+ * Iterações: 100.000 (compatível com NIST 2024 para SHA-512).
  */
 export function hashPassword(password: string): string {
   const salt = crypto.randomBytes(16).toString("hex");
-  const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
+  const hash = crypto.pbkdf2Sync(password, salt, 100_000, 64, "sha512").toString("hex");
   return `${salt}:${hash}`;
 }
 
 /**
- * Compara uma senha em texto puro com o hash PBKDF2 armazenado, com suporte a migração transparente.
+ * Compara senha em texto puro contra o hash PBKDF2 armazenado.
+ * Usa comparação em tempo constante para prevenir timing attacks.
  */
 export function verifyPassword(password: string, storedHash?: string | null): boolean {
   try {
     if (!storedHash || !password) return false;
 
-    // 1. Suporte a senhas em texto puro inseridas manualmente via SQL
-    if (storedHash === password) {
-      return true;
-    }
+    // Senhas gerenciadas pelo Supabase Auth — verificação delegada ao Supabase
+    if (storedHash === "managed_by_supabase_auth") return false;
 
-    // 2. Suporte ao usuário padrão de sistema ou hash gerenciado pelo Supabase
-    if (
-      storedHash === "managed_by_supabase_auth" &&
-      (password === "123456" || password === "lifeos_admin_2026!" || password === "@Pizza123")
-    ) {
-      return true;
-    }
+    // Hash PBKDF2 padrão: salt:hash
+    if (!storedHash.includes(":")) return false;
 
-    // 3. Se não contiver o separador salt:hash, compara diretamente
-    if (!storedHash.includes(":")) {
-      return storedHash === password;
-    }
-
-    // 4. Verificação padrão com PBKDF2
     const [salt, originalHash] = storedHash.split(":");
     if (!salt || !originalHash) return false;
-    const hash = crypto.pbkdf2Sync(password, salt, 1000, 64, "sha512").toString("hex");
-    return hash === originalHash;
+
+    const hash = crypto.pbkdf2Sync(password, salt, 100_000, 64, "sha512").toString("hex");
+
+    // Comparação em tempo constante para prevenir timing attacks
+    const a = Buffer.from(hash, "hex");
+    const b = Buffer.from(originalHash, "hex");
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
   } catch {
     return false;
   }
 }
 
 /**
- * Cria um token de sessão assinado digitalmente com HMAC-SHA256 e validade de 30 dias.
+ * Cria token de sessão assinado com HMAC-SHA256 (7 dias).
  */
 export function createToken(payload: { id: string; email: string; name: string; role?: string }): string {
   const data = JSON.stringify({
     ...payload,
     role: payload.role || "USER",
-    exp: Date.now() + 1000 * 60 * 60 * 24 * 30, // 30 dias
+    exp: Date.now() + 1000 * 60 * 60 * 24 * 7, // 7 dias
+    iat: Date.now(),
   });
   const encodedData = Buffer.from(data).toString("base64url");
   const signature = crypto.createHmac("sha256", AUTH_SECRET).update(encodedData).digest("base64url");
@@ -104,7 +102,7 @@ export function createToken(payload: { id: string; email: string; name: string; 
 }
 
 /**
- * Decodifica e verifica a assinatura criptográfica e a validade temporal do token de sessão.
+ * Decodifica e verifica assinatura criptográfica e validade do token.
  */
 export function verifyToken(token: string): { id: string; email: string; name: string; role: string } | null {
   try {
@@ -113,13 +111,14 @@ export function verifyToken(token: string): { id: string; email: string; name: s
 
     const expectedSignature = crypto.createHmac("sha256", AUTH_SECRET).update(encodedData).digest("base64url");
 
-    if (signature !== expectedSignature) return null;
+    // Comparação em tempo constante
+    const a = Buffer.from(signature, "base64url");
+    const b = Buffer.from(expectedSignature, "base64url");
+    if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) return null;
 
     const payload = JSON.parse(Buffer.from(encodedData, "base64url").toString("utf-8"));
 
-    if (payload.exp && Date.now() > payload.exp) {
-      return null;
-    }
+    if (payload.exp && Date.now() > payload.exp) return null;
 
     return {
       id: payload.id,
@@ -133,55 +132,43 @@ export function verifyToken(token: string): { id: string; email: string; name: s
 }
 
 /**
- * Obtém o usuário atualmente autenticado a partir dos cookies HTTP-Only da requisição.
+ * Obtém o usuário autenticado a partir dos cookies da requisição.
+ * SEGURANÇA: Sempre busca do banco para garantir que o usuário ainda existe e tem a role atual.
  */
 export async function getCurrentUser() {
   try {
     const cookieStore = cookies();
     const token = cookieStore.get(AUTH_COOKIE_NAME)?.value;
-
     if (!token) return null;
 
     const decoded = verifyToken(token);
     if (!decoded) return null;
 
-    // Busca o registro atualizado no Supabase / Banco
+    // SEMPRE busca no banco — nunca retorna dados apenas do token
     const user = await prisma.user.findUnique({
       where: { id: decoded.id },
-      select: {
-        id: true,
-        email: true,
-        name: true,
-        role: true,
-        avatarUrl: true,
-        createdAt: true,
-      },
     });
 
-    if (!user) {
-      // Fallback para o payload assinado se o registro ainda estiver sincronizando
-      return {
-        id: decoded.id,
-        email: decoded.email,
-        name: decoded.name,
-        role: decoded.role,
-        avatarUrl: null,
-      };
-    }
+    if (!user) return null;
 
-    return user;
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      avatarUrl: user.avatarUrl ?? null,
+      createdAt: user.createdAt,
+    };
   } catch {
     return null;
   }
 }
 
 /**
- * Verifica se o usuário atual possui privilégios de Administrador (ADMIN).
+ * Verifica se o usuário é Administrador.
  */
 export async function requireAdmin() {
   const user = await getCurrentUser();
-  if (!user || user.role !== "ADMIN") {
-    return null;
-  }
+  if (!user || user.role !== "ADMIN") return null;
   return user;
 }

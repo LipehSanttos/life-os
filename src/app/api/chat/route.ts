@@ -84,6 +84,14 @@ export async function POST(req: NextRequest) {
         data: { title: message.slice(0, 30), userId: user.id },
       });
       sessionId = newSession.id;
+    } else {
+      // SEGURANÇA: verifica se a sessão pertence ao usuário autenticado
+      const session = await prisma.chatSession.findFirst({
+        where: { id: sessionId, userId: user.id },
+      });
+      if (!session) {
+        return NextResponse.json({ error: "Sessão não encontrada." }, { status: 404 });
+      }
     }
 
     // Salva a mensagem do usuário
@@ -95,7 +103,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    // Carrega o histórico recente para manter a coerência do diálogo
+    // Carrega o histórico recente (filtrado pela sessão verificada)
     const history = await prisma.chatMessage.findMany({
       where: { sessionId },
       orderBy: { createdAt: "asc" },
