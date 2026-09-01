@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
+    const { id } = await params;
     const body = await req.json();
-    const existing = await prisma.course.findUnique({ where: { id: params.id } });
+    const existing = await prisma.course.findFirst({ where: { id, userId: user.id } });
 
     if (!existing) {
       return NextResponse.json({ error: "Curso não encontrado." }, { status: 404 });
@@ -17,7 +22,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const progress = Math.round((cModule / tModules) * 100);
 
     const updated = await prisma.course.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name: name !== undefined ? name : existing.name,
         institution: institution !== undefined ? institution : existing.institution,
@@ -40,9 +45,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await prisma.course.delete({ where: { id: params.id } });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
+    const { id } = await params;
+    await prisma.course.deleteMany({ where: { id, userId: user.id } });
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Erro ao excluir curso." }, { status: 500 });

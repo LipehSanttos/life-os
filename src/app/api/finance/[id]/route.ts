@@ -3,14 +3,15 @@ import { prisma } from "@/lib/db";
 import { getCurrentUser } from "@/lib/auth";
 import { addMonths, addWeeks, addYears } from "date-fns";
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
+    const { id } = await params;
     const body = await req.json();
     const existing = await prisma.financialReminder.findFirst({
-      where: { id: params.id, userId: user.id },
+      where: { id, userId: user.id },
     });
 
     if (!existing) {
@@ -37,7 +38,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const updated = await prisma.financialReminder.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         title: title !== undefined ? title.trim() : existing.title,
         description: description !== undefined ? description : existing.description,
@@ -58,7 +59,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     if (status) {
       await prisma.task.updateMany({
-        where: { financialReminderId: params.id, userId: user.id },
+        where: { financialReminderId: id, userId: user.id },
         data: {
           status: status === "PAID" ? "COMPLETED" : "PENDING",
           completedAt: status === "PAID" ? new Date() : null,
@@ -73,13 +74,14 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
 
+    const { id } = await params;
     await prisma.financialReminder.deleteMany({
-      where: { id: params.id, userId: user.id },
+      where: { id, userId: user.id },
     });
     return NextResponse.json({ success: true, message: "Conta excluída com sucesso." });
   } catch (error: any) {

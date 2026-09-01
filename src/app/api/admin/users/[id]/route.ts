@@ -15,7 +15,7 @@ import { supabaseAdmin, isSupabaseConfigured } from "@/lib/supabase/admin";
  */
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin();
@@ -26,7 +26,7 @@ export async function PATCH(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
     const body = await req.json();
     const { name, email, role, password } = body;
 
@@ -65,7 +65,8 @@ export async function PATCH(
       if (existing.id === admin.id && role !== "ADMIN") {
         return NextResponse.json(
           { error: "Você não pode revogar seu próprio privilégio de Administrador." },
-          );
+          { status: 400 }
+        );
       }
       updateData.role = role;
       supabaseUpdateAttrs.user_metadata = {
@@ -124,7 +125,7 @@ export async function PATCH(
  */
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const admin = await requireAdmin();
@@ -135,7 +136,7 @@ export async function DELETE(
       );
     }
 
-    const { id } = params;
+    const { id } = await params;
 
     if (id === admin.id) {
       return NextResponse.json(

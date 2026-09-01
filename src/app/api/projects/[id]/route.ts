@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { getCurrentUser } from "@/lib/auth";
 
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const project = await prisma.project.findUnique({
-      where: { id: params.id },
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
+    const { id } = await params;
+    const project = await prisma.project.findFirst({
+      where: { id, userId: user.id },
       include: {
         category: true,
         tasks: {
@@ -26,10 +31,14 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   }
 }
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
+    const { id } = await params;
     const body = await req.json();
-    const existing = await prisma.project.findUnique({ where: { id: params.id } });
+    const existing = await prisma.project.findFirst({ where: { id, userId: user.id } });
 
     if (!existing) {
       return NextResponse.json({ error: "Projeto não encontrado." }, { status: 404 });
@@ -38,7 +47,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     const { name, description, color, icon, priority, status, progress, startDate, dueDate, notes, links, categoryId } = body;
 
     const updated = await prisma.project.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         name: name !== undefined ? name : existing.name,
         description: description !== undefined ? description : existing.description,
@@ -62,9 +71,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
-    await prisma.project.delete({ where: { id: params.id } });
+    const user = await getCurrentUser();
+    if (!user) return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
+
+    const { id } = await params;
+    await prisma.project.deleteMany({ where: { id, userId: user.id } });
     return NextResponse.json({ success: true });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Erro ao excluir projeto." }, { status: 500 });

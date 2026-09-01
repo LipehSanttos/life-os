@@ -13,15 +13,16 @@ import { addDays, addWeeks, addMonths, addYears } from "date-fns";
  * GET /api/tasks/[id]
  * Recupera os detalhes completos de uma tarefa pelo seu ID.
  */
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
     }
 
+    const { id } = await params;
     const task = await prisma.task.findFirst({
-      where: { id: params.id, userId: user.id },
+      where: { id, userId: user.id },
       include: {
         category: true,
         project: true,
@@ -48,16 +49,17 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
  * PATCH /api/tasks/[id]
  * Atualiza campos específicos da tarefa, subtarefas ou status de conclusão com suporte a recorrência.
  */
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
     }
 
+    const { id } = await params;
     const body = await req.json();
     const existing = await prisma.task.findFirst({
-      where: { id: params.id, userId: user.id },
+      where: { id, userId: user.id },
       include: { subtasks: true },
     });
 
@@ -130,11 +132,11 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
 
     // Atualização atômica de subtarefas quando fornecidas
     if (Array.isArray(subtasks)) {
-      await prisma.subtask.deleteMany({ where: { taskId: params.id } });
+      await prisma.subtask.deleteMany({ where: { taskId: id } });
       if (subtasks.length > 0) {
         await prisma.subtask.createMany({
           data: subtasks.map((st: any, idx: number) => ({
-            taskId: params.id,
+            taskId: id,
             title: st.title,
             isCompleted: Boolean(st.isCompleted),
             sortOrder: idx + 1,
@@ -144,7 +146,7 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     }
 
     const updated = await prisma.task.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         title: title !== undefined ? title : existing.title,
         description: description !== undefined ? description : existing.description,
@@ -192,15 +194,16 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
  * DELETE /api/tasks/[id]
  * Exclui permanentemente uma tarefa do usuário autenticado.
  */
-export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
     const user = await getCurrentUser();
     if (!user) {
       return NextResponse.json({ error: "Não autenticado." }, { status: 401 });
     }
 
+    const { id } = await params;
     await prisma.task.deleteMany({
-      where: { id: params.id, userId: user.id },
+      where: { id, userId: user.id },
     });
 
     return NextResponse.json({ success: true });
