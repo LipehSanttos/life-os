@@ -22,7 +22,7 @@ export async function POST(req: NextRequest) {
 
     const cleanLogin = login.trim().toLowerCase();
 
-    // 1. Tenta autenticar via Supabase Auth se configurado
+    // 1. Tenta autenticar via Supabase Auth se configurado e login for e-mail
     if (isSupabaseConfigured() && cleanLogin.includes("@")) {
       try {
         const { data: sbData, error: sbError } = await supabaseAdmin.auth.signInWithPassword({
@@ -77,11 +77,11 @@ export async function POST(req: NextRequest) {
           return response;
         }
       } catch (sbErr) {
-        // Prossegue para autenticação via banco de dados
+        // Prossegue para autenticação via tabela User
       }
     }
 
-    // 2. Autenticação via banco de dados (Prisma / SQLite / PostgreSQL)
+    // 2. Autenticação via tabela User (Supabase Database)
     const user = await prisma.user.findFirst({
       where: {
         OR: [
@@ -104,6 +104,35 @@ export async function POST(req: NextRequest) {
         { error: "Credenciais inválidas. Verifique os dados digitados." },
         { status: 401 }
       );
+    }
+
+    // Auto-migração da senha para hash criptográfico seguro caso ainda não seja
+    if (!user.passwordHash || !user.passwordHash.includes(":") || user.passwordHash === password) {
+      const newHash = hashPassword(password);
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { passwordHash: newHash },
+        });
+
+        // Sincroniza senha no Supabase Auth se existir
+        if (isSupabaseConfigured() && user.email) {
+          const { data: authUsers } = await supabaseAdmin.auth.admin.listUsers();
+          const authUser = authUsers?.users.find((u: any) => u.email?.toLowerCase() === user.email.toLowerCase());
+          if (authUser) {
+            await supabaseAdmin.auth.admin.updateUserById(authUser.id, { password });
+          } else {
+            await supabaseAdmin.auth.admin.createUser({
+              email: user.email,
+              password,
+              email_confirm: true,
+              user_metadata: { name: user.name, role: user.role },
+            });
+          }
+        }
+      } catch (syncErr: any) {
+        console.warn("Aviso na sincronização de senha:", syncErr.message);
+      }
     }
 
     const token = createToken({
