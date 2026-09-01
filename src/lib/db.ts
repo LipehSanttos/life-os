@@ -138,6 +138,19 @@ export interface TableClient {
   count(args?: { where?: any }): Promise<number>;
 }
 
+const tablesWithUpdatedAt = new Set([
+  "User",
+  "UserSettings",
+  "Category",
+  "Project",
+  "Course",
+  "Book",
+  "FinancialReminder",
+  "Task",
+  "Subtask",
+  "ChatSession",
+]);
+
 function createTableClient(tableName: string): TableClient {
   return {
     async findMany(args: {
@@ -254,11 +267,14 @@ function createTableClient(tableName: string): TableClient {
     },
 
     async create(args: { data: Record<string, any>; select?: any; include?: any }): Promise<any> {
-      const payload = {
+      const payload: Record<string, any> = {
         ...args.data,
         id: args.data.id || `id_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        updatedAt: new Date().toISOString(),
       };
+
+      if (tablesWithUpdatedAt.has(tableName)) {
+        payload.updatedAt = new Date().toISOString();
+      }
 
       let selectFields = "*";
       if (args.include) {
@@ -283,11 +299,16 @@ function createTableClient(tableName: string): TableClient {
     },
 
     async createMany(args: { data: Record<string, any>[] }): Promise<{ count: number }> {
-      const payload = args.data.map((item) => ({
-        ...item,
-        id: item.id || `id_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-        updatedAt: new Date().toISOString(),
-      }));
+      const payload = args.data.map((item) => {
+        const itemPayload: Record<string, any> = {
+          ...item,
+          id: item.id || `id_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        };
+        if (tablesWithUpdatedAt.has(tableName)) {
+          itemPayload.updatedAt = new Date().toISOString();
+        }
+        return itemPayload;
+      });
 
       const { data, error } = await supabaseAdmin.from(tableName).insert(payload).select();
       if (error) throw new Error(error.message);
@@ -295,10 +316,13 @@ function createTableClient(tableName: string): TableClient {
     },
 
     async update(args: { where: Record<string, any>; data: Record<string, any>; select?: any; include?: any }): Promise<any> {
-      const updatePayload = {
+      const updatePayload: Record<string, any> = {
         ...args.data,
-        updatedAt: new Date().toISOString(),
       };
+
+      if (tablesWithUpdatedAt.has(tableName)) {
+        updatePayload.updatedAt = new Date().toISOString();
+      }
 
       let selectFields = "*";
       if (args.include) {
@@ -321,10 +345,13 @@ function createTableClient(tableName: string): TableClient {
     },
 
     async updateMany(args: { where: Record<string, any>; data: Record<string, any> }): Promise<{ count: number }> {
-      const updatePayload = {
+      const updatePayload: Record<string, any> = {
         ...args.data,
-        updatedAt: new Date().toISOString(),
       };
+
+      if (tablesWithUpdatedAt.has(tableName)) {
+        updatePayload.updatedAt = new Date().toISOString();
+      }
 
       let query: any = supabaseAdmin.from(tableName).update(updatePayload);
       query = applyWhereClause(query, args.where);
