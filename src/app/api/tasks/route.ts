@@ -157,27 +157,16 @@ export async function POST(req: NextRequest) {
         clientValue: clientValue ? parseFloat(clientValue) : null,
         academicSubject: academicSubject || null,
         isInbox: Boolean(isInbox),
+        subtasks: {
+          create: Array.isArray(subtasks)
+            ? subtasks.map((st: any, idx: number) => ({
+                title: st.title,
+                isCompleted: Boolean(st.isCompleted),
+                sortOrder: idx + 1,
+              }))
+            : [],
+        },
       },
-      include: {
-        category: true,
-        project: true,
-        course: true,
-      },
-    });
-
-    if (Array.isArray(subtasks) && subtasks.length > 0) {
-      await prisma.subtask.createMany({
-        data: subtasks.map((st: any, idx: number) => ({
-          taskId: task.id,
-          title: st.title,
-          isCompleted: Boolean(st.isCompleted),
-          sortOrder: idx + 1,
-        })),
-      });
-    }
-
-    const fullTask = await prisma.task.findUnique({
-      where: { id: task.id },
       include: {
         category: true,
         project: true,
@@ -186,7 +175,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return NextResponse.json(fullTask || task, { status: 201 });
+    return NextResponse.json(task, { status: 201 });
   } catch (error: any) {
     return NextResponse.json({ error: error.message || "Erro ao criar tarefa." }, { status: 500 });
   }
