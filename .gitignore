@@ -7,8 +7,10 @@
 # Testing
 /coverage
 
-# Next.js build output
+# Next.js & OpenNext build output
 /.next/
+/.open-next/
+/.wrangler/
 /out/
 
 # Production build artifacts
