@@ -9,10 +9,17 @@ import crypto from "crypto";
 import { supabaseAdmin } from "@/lib/supabase/admin";
 
 function applyWhereClause(query: any, where?: Record<string, any>): any {
-  if (!where) return query;
+  if (!where || typeof where !== "object") return query;
 
   for (const [key, value] of Object.entries(where)) {
     if (value === undefined) continue;
+
+    if (key === "AND" && Array.isArray(value)) {
+      for (const andItem of value) {
+        query = applyWhereClause(query, andItem);
+      }
+      continue;
+    }
 
     if (key === "OR" && Array.isArray(value)) {
       const orConditions = value
@@ -28,40 +35,57 @@ function applyWhereClause(query: any, where?: Record<string, any>): any {
           }
           return `${subKey}.eq.${subVal}`;
         })
+        .filter(Boolean)
         .join(",");
       if (orConditions) {
         query = query.or(orConditions);
       }
-    } else if (key === "NOT" && typeof value === "object") {
+      continue;
+    }
+
+    if (key === "NOT" && typeof value === "object" && value !== null) {
       for (const [notKey, notVal] of Object.entries(value)) {
         query = query.neq(notKey, notVal);
       }
-    } else if (typeof value === "object" && value !== null) {
+      continue;
+    }
+
+    if (typeof value === "object" && value !== null && !(value instanceof Date) && !Array.isArray(value)) {
       if ("equals" in value) {
         query = query.eq(key, value.equals);
-      } else if ("in" in value && Array.isArray(value.in)) {
+      }
+      if ("in" in value && Array.isArray(value.in)) {
         query = query.in(key, value.in);
-      } else if ("notIn" in value && Array.isArray(value.notIn)) {
+      }
+      if ("notIn" in value && Array.isArray(value.notIn)) {
         query = query.not(key, "in", `(${value.notIn.join(",")})`);
-      } else if ("contains" in value) {
+      }
+      if ("contains" in value) {
         query = query.ilike(key, `%${value.contains}%`);
-      } else if ("gte" in value) {
+      }
+      if ("gte" in value) {
         const val = value.gte instanceof Date ? value.gte.toISOString() : value.gte;
         query = query.gte(key, val);
-      } else if ("gt" in value) {
+      }
+      if ("gt" in value) {
         const val = value.gt instanceof Date ? value.gt.toISOString() : value.gt;
         query = query.gt(key, val);
-      } else if ("lte" in value) {
+      }
+      if ("lte" in value) {
         const val = value.lte instanceof Date ? value.lte.toISOString() : value.lte;
         query = query.lte(key, val);
-      } else if ("lt" in value) {
+      }
+      if ("lt" in value) {
         const val = value.lt instanceof Date ? value.lt.toISOString() : value.lt;
         query = query.lt(key, val);
-      } else if ("not" in value) {
+      }
+      if ("not" in value) {
         query = query.neq(key, value.not);
       }
     } else if (value === null) {
       query = query.is(key, null);
+    } else if (value instanceof Date) {
+      query = query.eq(key, value.toISOString());
     } else {
       query = query.eq(key, value);
     }
@@ -228,8 +252,30 @@ function createTableClient(tableName: string): TableClient {
         query = query.limit(args.take);
       }
 
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
+      let { data, error } = await query;
+
+      // Fallback gracioso caso o select com joins do PostgREST retorne erro
+      if (error && selectFields !== "*") {
+        console.warn(`[db] Join falhou em ${tableName}, executando fallback select(*):`, error.message);
+        let fallbackQuery: any = supabaseAdmin.from(tableName).select("*");
+        fallbackQuery = applyWhereClause(fallbackQuery, args.where);
+        fallbackQuery = applyOrderBy(fallbackQuery, args.orderBy);
+        if (args.skip !== undefined && args.take !== undefined) {
+          fallbackQuery = fallbackQuery.range(args.skip, args.skip + args.take - 1);
+        } else if (args.take !== undefined) {
+          fallbackQuery = fallbackQuery.limit(args.take);
+        }
+        const fallbackRes = await fallbackQuery;
+        if (!fallbackRes.error) {
+          data = fallbackRes.data;
+          error = null;
+        }
+      }
+
+      if (error) {
+        console.error(`[db] Erro em ${tableName}.findMany:`, error.message || error);
+        throw new Error(error.message || "Erro ao consultar dados.");
+      }
 
       if (args.include?._count && Array.isArray(data)) {
         for (const item of data) {
@@ -259,8 +305,25 @@ function createTableClient(tableName: string): TableClient {
       query = applyOrderBy(query, args.orderBy);
       query = query.limit(1);
 
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
+      let { data, error } = await query;
+
+      if (error && selectFields !== "*") {
+        console.warn(`[db] Join falhou em ${tableName}.findFirst, tentando fallback select(*):`, error.message);
+        let fallbackQuery: any = supabaseAdmin.from(tableName).select("*");
+        fallbackQuery = applyWhereClause(fallbackQuery, args.where);
+        fallbackQuery = applyOrderBy(fallbackQuery, args.orderBy);
+        fallbackQuery = fallbackQuery.limit(1);
+        const fallbackRes = await fallbackQuery;
+        if (!fallbackRes.error) {
+          data = fallbackRes.data;
+          error = null;
+        }
+      }
+
+      if (error) {
+        console.error(`[db] Erro em ${tableName}.findFirst:`, error.message || error);
+        throw new Error(error.message || "Erro ao buscar registro.");
+      }
       return data && data.length > 0 ? data[0] : null;
     },
 
@@ -275,8 +338,23 @@ function createTableClient(tableName: string): TableClient {
       query = applyWhereClause(query, args.where);
       query = query.limit(1);
 
-      const { data, error } = await query;
-      if (error) throw new Error(error.message);
+      let { data, error } = await query;
+
+      if (error && selectFields !== "*") {
+        let fallbackQuery: any = supabaseAdmin.from(tableName).select("*");
+        fallbackQuery = applyWhereClause(fallbackQuery, args.where);
+        fallbackQuery = fallbackQuery.limit(1);
+        const fallbackRes = await fallbackQuery;
+        if (!fallbackRes.error) {
+          data = fallbackRes.data;
+          error = null;
+        }
+      }
+
+      if (error) {
+        console.error(`[db] Erro em ${tableName}.findUnique:`, error.message || error);
+        throw new Error(error.message || "Erro ao buscar registro único.");
+      }
       return data && data.length > 0 ? data[0] : null;
     },
 
@@ -291,15 +369,16 @@ function createTableClient(tableName: string): TableClient {
         payload.updatedAt = new Date().toISOString();
       }
 
-      const selectFields = buildSelectFields(args.include, args.select);
-
       const { data, error } = await supabaseAdmin
         .from(tableName)
         .insert(payload)
-        .select(selectFields)
+        .select()
         .single();
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error(`[db] Erro em ${tableName}.create:`, error.message || error);
+        throw new Error(error.message || "Erro ao criar registro.");
+      }
       return data;
     },
 
@@ -317,7 +396,10 @@ function createTableClient(tableName: string): TableClient {
       });
 
       const { data, error } = await supabaseAdmin.from(tableName).insert(payload).select();
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error(`[db] Erro em ${tableName}.createMany:`, error.message || error);
+        throw new Error(error.message || "Erro ao criar múltiplos registros.");
+      }
       return { count: data?.length || 0 };
     },
 
@@ -331,13 +413,14 @@ function createTableClient(tableName: string): TableClient {
         updatePayload.updatedAt = new Date().toISOString();
       }
 
-      const selectFields = buildSelectFields(args.include, args.select);
-
       let query: any = supabaseAdmin.from(tableName).update(updatePayload);
       query = applyWhereClause(query, args.where);
-      const { data, error } = await query.select(selectFields).single();
+      const { data, error } = await query.select().single();
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error(`[db] Erro em ${tableName}.update:`, error.message || error);
+        throw new Error(error.message || "Erro ao atualizar registro.");
+      }
       return data;
     },
 
@@ -355,7 +438,10 @@ function createTableClient(tableName: string): TableClient {
       query = applyWhereClause(query, args.where);
       const { data, error } = await query.select();
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error(`[db] Erro em ${tableName}.updateMany:`, error.message || error);
+        throw new Error(error.message || "Erro ao atualizar registros.");
+      }
       return { count: data?.length || 0 };
     },
 
@@ -378,7 +464,10 @@ function createTableClient(tableName: string): TableClient {
       query = applyWhereClause(query, args.where);
       const { data, error } = await query.select().single();
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error(`[db] Erro em ${tableName}.delete:`, error.message || error);
+        throw new Error(error.message || "Erro ao deletar registro.");
+      }
       return data;
     },
 
@@ -387,7 +476,10 @@ function createTableClient(tableName: string): TableClient {
       query = applyWhereClause(query, args.where);
       const { data, error } = await query.select();
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.error(`[db] Erro em ${tableName}.deleteMany:`, error.message || error);
+        throw new Error(error.message || "Erro ao deletar registros.");
+      }
       return { count: data?.length || 0 };
     },
 
@@ -396,7 +488,10 @@ function createTableClient(tableName: string): TableClient {
       query = applyWhereClause(query, args.where);
       const { count, error } = await query;
 
-      if (error) throw new Error(error.message);
+      if (error) {
+        console.warn(`[db] Aviso em ${tableName}.count:`, error.message);
+        return 0;
+      }
       return count || 0;
     },
   };
