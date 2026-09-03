@@ -53,14 +53,14 @@ export default function CategoriesPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-16">
       {/* Header */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 sm:p-8 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider mb-2">
             <Tags className="w-5 h-5 text-indigo-400" />
             <span>Estruturação</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-            Categorias de Vida
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+            <span className="text-gradient">Categorias de Vida</span>
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1.5 font-medium">
             Agrupe tarefas, compromissos e metas por áreas temáticas personalizadas.
@@ -69,7 +69,7 @@ export default function CategoriesPage() {
 
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-md shadow-primary/25 active:scale-95 transition-all self-start md:self-auto"
+          className="flex items-center gap-2 px-5 py-3 rounded-lg bg-primary hover:bg-primary/90 glow-border-hover text-primary-foreground font-bold text-sm shadow-lg shadow-primary/25 active:scale-95 transition-all self-start md:self-auto"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Nova Categoria</span>
@@ -81,7 +81,7 @@ export default function CategoriesPage() {
         {categories.map((cat) => (
           <div
             key={cat.id}
-            className="p-5 rounded-2xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs flex items-center justify-between group hover:border-primary/40 transition-all"
+            className="p-5 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover flex items-center justify-between group transition-all"
           >
             <div className="flex items-center gap-3">
               <span
@@ -101,8 +101,8 @@ export default function CategoriesPage() {
 
       {/* New Category Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-md rounded-3xl border border-border/80 bg-card p-6 sm:p-8 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-md rounded-xl border border-border/30 bg-card/95 backdrop-blur-2xl p-6 sm:p-8 space-y-4 glow-border shadow-2xl">
             <h2 className="text-xl font-black text-foreground">Nova Categoria</h2>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
@@ -112,7 +112,7 @@ export default function CategoriesPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: Saúde & Bem-estar"
-                  className="w-full px-4 py-3 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-semibold"
+                  className="w-full px-4 py-3 rounded-lg border border-border/40 bg-background/80 text-foreground text-sm outline-none input-glow font-semibold"
                   autoFocus
                 />
               </div>
@@ -123,7 +123,7 @@ export default function CategoriesPage() {
                   type="color"
                   value={color}
                   onChange={(e) => setColor(e.target.value)}
-                  className="w-full h-12 rounded-xl border border-border/70 bg-background cursor-pointer"
+                  className="w-full h-12 rounded-lg border border-border/40 bg-background cursor-pointer"
                 />
               </div>
 
@@ -131,14 +131,14 @@ export default function CategoriesPage() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl text-sm font-bold text-muted-foreground hover:bg-muted"
+                  className="px-5 py-2.5 rounded-lg text-sm font-bold text-muted-foreground hover:bg-muted/40 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading || !name.trim()}
-                  className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-sm shadow-md shadow-primary/25"
+                  className="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary/90 glow-border-hover text-primary-foreground font-black text-sm shadow-lg shadow-primary/25 transition-all"
                 >
                   {loading ? "Criando..." : "Criar Categoria"}
                 </button>

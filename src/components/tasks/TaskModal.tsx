@@ -130,19 +130,19 @@ export function TaskModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-fade-in">
       <div
-        className="w-full max-w-xl max-h-[90vh] flex flex-col rounded-3xl border border-border/80 bg-card text-card-foreground shadow-2xl overflow-hidden"
+        className="w-full max-w-xl max-h-[90vh] flex flex-col rounded-xl border border-border/30 bg-card/95 backdrop-blur-2xl glow-border shadow-2xl text-card-foreground overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border/40">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border/30">
           <h2 className="text-lg sm:text-xl font-black text-foreground">
             {taskToEdit ? "Editar Tarefa" : "Nova Tarefa"}
           </h2>
           <button
             onClick={onClose}
-            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
           >
             <X className="w-5 h-5" />
           </button>
@@ -157,7 +157,7 @@ export function TaskModal({
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Ex: Entregar relatório trimestral"
-              className="w-full px-4 py-3 rounded-xl border border-border/70 bg-background text-foreground text-sm sm:text-base outline-none focus:ring-2 focus:ring-primary/40 font-semibold"
+              className="w-full px-4 py-3 rounded-lg border border-border/40 bg-background/80 input-glow text-foreground text-sm sm:text-base outline-none font-semibold"
               autoFocus
             />
           </div>
@@ -169,7 +169,7 @@ export function TaskModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Adicione notas, links ou detalhes adicionais..."
               rows={3}
-              className="w-full px-4 py-3 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium resize-none"
+              className="w-full px-4 py-3 rounded-lg border border-border/40 bg-background/80 input-glow text-foreground text-sm outline-none font-medium resize-none"
             />
           </div>
 
@@ -182,7 +182,7 @@ export function TaskModal({
               <select
                 value={categoryId}
                 onChange={(e) => setCategoryId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-semibold"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-border/40 bg-background/80 input-glow text-foreground text-sm outline-none font-semibold"
               >
                 <option value="">Sem categoria</option>
                 {categories.map((cat) => (
@@ -201,7 +201,7 @@ export function TaskModal({
               <select
                 value={priority}
                 onChange={(e) => setPriority(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-semibold"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-border/40 bg-background/80 input-glow text-foreground text-sm outline-none font-semibold"
               >
                 <option value="LOW">Baixa</option>
                 <option value="MEDIUM">Média</option>
@@ -221,7 +221,7 @@ export function TaskModal({
                 type="date"
                 value={dueDate}
                 onChange={(e) => setDueDate(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-border/40 bg-background/80 input-glow text-foreground text-sm outline-none font-medium"
               >
               </input>
             </div>
@@ -235,7 +235,7 @@ export function TaskModal({
                 type="time"
                 value={dueTime}
                 onChange={(e) => setDueTime(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-border/40 bg-background/80 input-glow text-foreground text-sm outline-none font-medium"
               />
             </div>
           </div>
@@ -249,7 +249,7 @@ export function TaskModal({
               <select
                 value={projectId}
                 onChange={(e) => setProjectId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-border/40 bg-background/80 input-glow text-foreground text-sm outline-none font-medium"
               >
                 <option value="">Nenhum projeto</option>
                 {projects.map((p) => (
@@ -268,7 +268,7 @@ export function TaskModal({
               <select
                 value={courseId}
                 onChange={(e) => setCourseId(e.target.value)}
-                className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                className="w-full px-3.5 py-2.5 rounded-lg border border-border/40 bg-background/80 input-glow text-foreground text-sm outline-none font-medium"
               >
                 <option value="">Nenhum curso</option>
                 {courses.map((c) => (
@@ -287,7 +287,7 @@ export function TaskModal({
               {subtasks.map((st, index) => (
                 <div
                   key={index}
-                  className="flex items-center justify-between p-2.5 rounded-xl bg-muted/40 border border-border/60 text-sm"
+                  className="flex items-center justify-between p-2.5 rounded-lg bg-muted/40 border border-border/30 text-sm"
                 >
                   <span className={st.isCompleted ? "line-through text-muted-foreground" : "text-foreground"}>
                     {st.title}
@@ -315,30 +315,30 @@ export function TaskModal({
                   }
                 }}
                 placeholder="Nova etapa do checklist..."
-                className="flex-1 px-3.5 py-2 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40"
+                className="flex-1 px-3.5 py-2 rounded-lg border border-border/40 bg-background/80 input-glow text-foreground text-sm outline-none"
               />
               <button
                 type="button"
                 onClick={handleAddSubtask}
-                className="px-4 py-2 rounded-xl bg-muted hover:bg-muted/80 text-foreground font-bold text-sm border border-border/70 transition-colors"
+                className="px-4 py-2 rounded-lg bg-muted hover:bg-muted/80 text-foreground font-bold text-sm border border-border/30 transition-colors"
               >
                 Adicionar
               </button>
             </div>
           </div>
 
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/40">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-border/30">
             <button
               type="button"
               onClick={onClose}
-              className="px-5 py-2.5 rounded-xl text-sm font-bold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="px-5 py-2.5 rounded-lg text-sm font-bold text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               Cancelar
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-black shadow-md shadow-primary/25 active:scale-95 transition-all"
+              className="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-black glow-border-hover shadow-lg shadow-primary/25 active:scale-95 transition-all"
             >
               {loading ? "Salvando..." : taskToEdit ? "Atualizar Tarefa" : "Criar Tarefa"}
             </button>

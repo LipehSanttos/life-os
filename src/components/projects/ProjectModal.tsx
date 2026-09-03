@@ -76,39 +76,39 @@ export function ProjectModal({ isOpen, onClose, onProjectSaved, projectToEdit }:
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-lg bg-card text-card-foreground border rounded-2xl shadow-2xl p-6 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-lg bg-card/95 backdrop-blur-2xl glow-border shadow-2xl text-card-foreground border border-border/30 rounded-xl p-6 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-border/30">
           <div className="flex items-center gap-2">
             <FolderKanban className="w-5 h-5 text-primary" />
             <h2 className="text-sm font-semibold text-foreground">{projectToEdit ? "Editar Projeto" : "Novo Projeto"}</h2>
           </div>
-          <button onClick={onClose}><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="p-1 rounded-lg text-muted-foreground hover:text-foreground transition-colors"><X className="w-5 h-5" /></button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-semibold mb-1">Nome do Projeto *</label>
+            <label className="block text-xs font-semibold mb-1 text-foreground">Nome do Projeto *</label>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border bg-background text-sm focus:ring-2 focus:ring-primary outline-none"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-border/40 bg-background/80 input-glow text-foreground text-sm outline-none"
               autoFocus
             />
           </div>
           <div>
-            <label className="block text-xs font-semibold mb-1">Descrição</label>
+            <label className="block text-xs font-semibold mb-1 text-foreground">Descrição</label>
             <textarea
               rows={3}
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              className="w-full px-3.5 py-2 rounded-xl border bg-background text-xs focus:ring-2 focus:ring-primary outline-none resize-none"
+              className="w-full px-3.5 py-2 rounded-lg border border-border/40 bg-background/80 input-glow text-foreground text-xs outline-none resize-none"
             />
           </div>
-          <div className="flex items-center justify-end gap-2 pt-4 border-t">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-medium">Cancelar</button>
-            <button type="submit" disabled={loading} className="px-5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shadow-md">
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/30">
+            <button type="button" onClick={onClose} className="px-4 py-2 rounded-lg text-xs font-medium text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors">Cancelar</button>
+            <button type="submit" disabled={loading} className="px-5 py-2 rounded-lg bg-primary text-primary-foreground text-xs font-semibold glow-border-hover shadow-lg shadow-primary/25 active:scale-[0.98] transition-all">
               {loading ? "Salvando..." : "Salvar Projeto"}
             </button>
           </div>

@@ -48,35 +48,35 @@ export default function CalendarPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-16">
       {/* Header */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="p-6 sm:p-8 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider mb-2">
             <CalendarIcon className="w-5 h-5 text-blue-500" />
             <span>Calendário Mensal</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground capitalize">
-            {format(currentDate, "MMMM 'de' yyyy", { locale: ptBR })}
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight capitalize">
+            <span className="text-gradient">{format(currentDate, "MMMM 'de' yyyy", { locale: ptBR })}</span>
           </h1>
         </div>
 
         <div className="flex items-center gap-2 self-start sm:self-auto">
-          <div className="flex items-center gap-1 bg-muted/60 border border-border/60 p-1.5 rounded-2xl">
+          <div className="flex items-center gap-1 bg-muted/40 border border-border/40 p-1.5 rounded-lg">
             <button
               onClick={() => setCurrentDate(subMonths(currentDate, 1))}
-              className="p-2 rounded-xl hover:bg-card text-muted-foreground hover:text-foreground transition-colors"
+              className="p-2 rounded-lg hover:bg-card text-muted-foreground hover:text-foreground transition-colors"
               title="Mês anterior"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={() => setCurrentDate(new Date())}
-              className="px-3.5 py-1.5 text-xs font-bold rounded-xl hover:bg-card text-foreground transition-colors"
+              className="px-3.5 py-1.5 text-xs font-bold rounded-lg hover:bg-card text-foreground transition-colors"
             >
               Hoje
             </button>
             <button
               onClick={() => setCurrentDate(addMonths(currentDate, 1))}
-              className="p-2 rounded-xl hover:bg-card text-muted-foreground hover:text-foreground transition-colors"
+              className="p-2 rounded-lg hover:bg-card text-muted-foreground hover:text-foreground transition-colors"
               title="Próximo mês"
             >
               <ChevronRight className="w-4 h-4" />
@@ -86,8 +86,8 @@ export default function CalendarPage() {
       </div>
 
       {/* Calendar Grid */}
-      <div className="rounded-3xl border border-border/70 bg-card/80 backdrop-blur-md shadow-xl overflow-hidden">
-        <div className="grid grid-cols-7 border-b border-border/60 bg-muted/40 text-center py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider">
+      <div className="rounded-xl border border-border/30 bg-card/60 backdrop-blur-md glow-border shadow-xl overflow-hidden">
+        <div className="grid grid-cols-7 border-b border-border/40 bg-muted/30 text-center py-3 text-xs font-bold text-muted-foreground uppercase tracking-wider">
           <span>Dom</span><span>Seg</span><span>Ter</span><span>Qua</span><span>Qui</span><span>Sex</span><span>Sáb</span>
         </div>
         <div className="grid grid-cols-7 auto-rows-fr divide-x divide-y divide-border/50">

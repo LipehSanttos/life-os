@@ -47,13 +47,13 @@ export default function TodayPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-16">
       {/* Header */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs">
+      <div className="p-6 sm:p-8 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border">
         <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider mb-2 capitalize">
           <Sun className="w-5 h-5 text-amber-500" />
           <span>{dateStr}</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-          Minhas Tarefas de Hoje
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+          <span className="text-gradient">Minhas Tarefas de Hoje</span>
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground mt-1.5 font-medium">
           Concentre-se nas prioridades do dia e mantenha seu ritmo produtivo.
@@ -103,11 +103,12 @@ export default function TodayPage() {
 
       {/* Overdue Section */}
       {overdueTasks.length > 0 && (
-        <div className="p-6 rounded-3xl border border-rose-500/30 bg-rose-500/5 backdrop-blur-xl shadow-xs space-y-4">
+        <div className="p-6 rounded-xl border border-rose-500/20 bg-rose-500/5 backdrop-blur-xl glow-border-hover space-y-4">
           <div className="flex items-center gap-2 text-rose-500 font-bold text-base">
             <AlertCircle className="w-5 h-5" />
-            <span>Pendências Atrasadas ({overdueTasks.length})</span>
+            <span>Atrasadas ({overdueTasks.length})</span>
           </div>
+
           <div className="space-y-2">
             {overdueTasks.map((task) => (
               <TaskItem
@@ -128,8 +129,8 @@ export default function TodayPage() {
         </div>
       )}
 
-      {/* Today Tasks Section */}
-      <div className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-4">
+      {/* Main Today Tasks Panel */}
+      <div className="p-6 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-border/40">
           <div className="flex items-center gap-2 font-bold text-base text-foreground">
             <Calendar className="w-5 h-5 text-primary" />

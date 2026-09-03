@@ -52,7 +52,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {mobileMenuOpen && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-xs md:hidden"
+          className="fixed inset-0 z-40 bg-background/80 backdrop-blur-md md:hidden"
           onClick={() => setMobileMenuOpen(false)}
         >
           <div className="w-64 h-full bg-card shadow-2xl" onClick={(e) => e.stopPropagation()}>
@@ -77,7 +77,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           onOpenMobileMenu={() => setMobileMenuOpen(true)}
         />
 
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-background">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-background grain-overlay">
           {children}
         </main>
       </div>

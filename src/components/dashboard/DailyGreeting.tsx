@@ -26,9 +26,9 @@ export function DailyGreeting({
   });
 
   return (
-    <div className="relative overflow-hidden rounded-3xl border border-border/70 bg-gradient-to-br from-card via-card/90 to-primary/5 p-6 sm:p-8 backdrop-blur-xl shadow-sm">
+    <div className="relative overflow-hidden rounded-xl border border-border/30 bg-gradient-to-br from-card via-card/90 to-primary/5 p-6 sm:p-8 backdrop-blur-xl glow-border">
       {/* Background Decorative Glow */}
-      <div className="absolute -right-16 -top-16 w-64 h-64 bg-primary/10 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -right-16 -top-16 w-64 h-64 bg-primary/8 rounded-full blur-3xl pointer-events-none" />
 
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         {/* Left: Greeting & Status */}
@@ -38,8 +38,8 @@ export function DailyGreeting({
             <span>{dateStr}</span>
           </div>
 
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-            {greeting}{userName ? <>, <span className="text-primary">{userName}</span></> : ""}! 👋
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+            <span className="text-gradient">{greeting}{userName ? <>, <span className="text-gradient-primary">{userName}</span></> : ""}! 👋</span>
           </h2>
 
           <p className="text-sm sm:text-base text-muted-foreground font-medium max-w-2xl leading-relaxed">
@@ -59,7 +59,7 @@ export function DailyGreeting({
 
         {/* Right: Summary Metrics Pills */}
         <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
-          <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-background/80 border border-border/70 shadow-xs">
+          <div className="flex items-center gap-2.5 px-4 py-3 rounded-lg bg-background/60 border border-border/30 glow-border-hover">
             <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground font-semibold">Hoje</span>
@@ -67,7 +67,7 @@ export function DailyGreeting({
             </div>
           </div>
 
-          <div className="flex items-center gap-2.5 px-4 py-3 rounded-2xl bg-background/80 border border-border/70 shadow-xs">
+          <div className="flex items-center gap-2.5 px-4 py-3 rounded-lg bg-background/60 border border-border/30 glow-border-hover">
             <div className="w-2.5 h-2.5 rounded-full bg-rose-500" />
             <div className="flex flex-col">
               <span className="text-xs text-muted-foreground font-semibold">Prioritárias</span>

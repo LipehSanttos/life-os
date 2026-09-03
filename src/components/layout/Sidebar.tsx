@@ -96,14 +96,14 @@ export function Sidebar({ onOpenTaskModal }: SidebarProps) {
   return (
     <aside
       className={cn(
-        "relative flex flex-col border-r border-border/50 bg-card/70 backdrop-blur-xl transition-all duration-300 z-30 h-screen select-none",
+        "relative flex flex-col border-r border-border/50 bg-card/40 backdrop-blur-2xl transition-all duration-300 z-30 h-screen select-none",
         collapsed ? "w-[72px]" : "w-64"
       )}
     >
       {/* Brand Header */}
-      <div className="flex items-center justify-between h-16 px-4 border-b border-border/40">
+      <div className="flex items-center justify-between h-16 px-4 border-b border-border/30">
         <Link href="/dashboard" className="flex items-center gap-3 overflow-hidden">
-          <div className="flex items-center justify-center w-10 h-10 rounded-xl overflow-hidden shadow-md shadow-primary/20 flex-shrink-0 bg-background/80 border border-border/40 p-1">
+          <div className="flex items-center justify-center w-10 h-10 rounded-lg overflow-hidden shadow-md shadow-primary/30 glow-border flex-shrink-0 bg-background/80 border border-border/40 p-1">
             <Image
               src="/logo.svg"
               alt="Life OS Logo"
@@ -117,7 +117,7 @@ export function Sidebar({ onOpenTaskModal }: SidebarProps) {
             <div className="flex flex-col">
               <span className="font-black text-base tracking-tight text-foreground flex items-center gap-1.5">
                 Life OS
-                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-primary/15 text-primary border border-primary/25">
+                <span className="text-[10px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-md bg-primary/15 text-primary border border-primary/30 glow-border-animated">
                   AI
                 </span>
               </span>
@@ -141,7 +141,7 @@ export function Sidebar({ onOpenTaskModal }: SidebarProps) {
         <button
           onClick={onOpenTaskModal}
           className={cn(
-            "flex items-center justify-center gap-2 w-full py-3 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-md shadow-primary/20 hover:shadow-lg active:scale-[0.98] transition-all",
+            "flex items-center justify-center gap-2 w-full py-3 rounded-lg bg-primary glow-border-hover hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-lg shadow-primary/25 hover:shadow-lg active:scale-[0.98] transition-all",
             collapsed && "px-0"
           )}
         >
@@ -161,10 +161,10 @@ export function Sidebar({ onOpenTaskModal }: SidebarProps) {
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group",
+                "flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all group",
                 isActive
-                  ? "bg-primary/15 text-primary font-bold border border-primary/25 shadow-xs"
-                  : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                  ? "bg-primary/10 text-primary font-bold glow-border-active"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/40",
                 item.highlight && !isActive && "text-indigo-400 hover:text-indigo-300 font-semibold"
               )}
             >
@@ -193,7 +193,7 @@ export function Sidebar({ onOpenTaskModal }: SidebarProps) {
             <Link
               href="/admin/users"
               className={cn(
-                "flex items-center justify-between px-3.5 py-2.5 rounded-xl text-sm font-medium transition-all group",
+                "flex items-center justify-between px-3.5 py-2.5 rounded-lg text-sm font-medium transition-all group",
                 pathname.startsWith("/admin")
                   ? "bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30 shadow-xs"
                   : "text-purple-400/90 hover:text-purple-300 hover:bg-purple-500/10"
@@ -256,12 +256,12 @@ export function Sidebar({ onOpenTaskModal }: SidebarProps) {
       </div>
 
       {/* Footer */}
-      <div className="p-3 border-t border-border/40 mt-auto space-y-1">
+      <div className="p-3 border-t border-border/30 mt-auto space-y-1">
         <Link
           href="/settings"
           className={cn(
-            "flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-all",
-            pathname === "/settings" && "bg-primary/15 text-primary font-bold border border-primary/20"
+            "flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-muted/40 transition-all",
+            pathname === "/settings" && "bg-primary/10 text-primary font-bold glow-border-active"
           )}
         >
           <Settings className="w-4 h-4 flex-shrink-0" />
@@ -271,7 +271,7 @@ export function Sidebar({ onOpenTaskModal }: SidebarProps) {
         <button
           type="button"
           onClick={handleLogout}
-          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all"
+          className="w-full flex items-center gap-3 px-3.5 py-2.5 rounded-lg text-sm font-medium text-rose-400 hover:text-rose-300 hover:bg-rose-500/10 transition-all"
         >
           <LogOut className="w-4 h-4 flex-shrink-0" />
           {!collapsed && <span>Sair</span>}

@@ -89,14 +89,14 @@ export default function StudiesPage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-16">
       {/* Header */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 sm:p-8 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider mb-2">
             <GraduationCap className="w-5 h-5 text-indigo-400" />
             <span>Educação & Formação</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-            Estudos & Cursos
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+            <span className="text-gradient">Estudos & Cursos</span>
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1.5 font-medium">
             Monitore seu avanço em cursos, módulos e entregas da faculdade.
@@ -105,7 +105,7 @@ export default function StudiesPage() {
 
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-md shadow-primary/25 active:scale-95 transition-all self-start md:self-auto"
+          className="flex items-center gap-2 px-5 py-3 rounded-lg bg-primary hover:bg-primary/90 glow-border-hover text-primary-foreground font-bold text-sm shadow-lg shadow-primary/25 active:scale-95 transition-all self-start md:self-auto"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Novo Curso</span>
@@ -119,11 +119,11 @@ export default function StudiesPage() {
           {courses.map((course) => (
             <div
               key={course.id}
-              className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs flex flex-col justify-between space-y-4"
+              className="p-6 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover flex flex-col justify-between space-y-4"
             >
               <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                  <div className="p-2.5 rounded-xl bg-indigo-500/15 text-indigo-400">
+                  <div className="p-2.5 rounded-lg bg-indigo-500/15 text-indigo-400">
                     <Laptop className="w-5 h-5" />
                   </div>
                   <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-indigo-500/15 text-indigo-400 border border-indigo-500/25">
@@ -151,7 +151,7 @@ export default function StudiesPage() {
                 <button
                   onClick={() => handleAdvanceModule(course)}
                   disabled={course.currentModule >= course.totalModules}
-                  className="w-full py-2.5 rounded-xl bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 text-xs font-bold transition-all disabled:opacity-40"
+                  className="w-full py-2.5 rounded-lg bg-indigo-500/15 hover:bg-indigo-500/25 text-indigo-400 text-xs font-bold transition-all disabled:opacity-40"
                 >
                   {course.currentModule >= course.totalModules ? "Curso Concluído 🎉" : "+ Concluir 1 Módulo"}
                 </button>
@@ -162,7 +162,7 @@ export default function StudiesPage() {
       </div>
 
       {/* Academic Deliverables & Tasks */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-4">
+      <div className="p-6 sm:p-8 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover space-y-4">
         <div className="flex items-center gap-2 pb-3 border-b border-border/40 font-bold text-base text-foreground">
           <BookOpenCheck className="w-5 h-5 text-pink-500" />
           <span>Trabalhos & Entregas da Faculdade ({academicTasks.length})</span>
@@ -183,8 +183,8 @@ export default function StudiesPage() {
 
       {/* New Course Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-lg rounded-3xl border border-border/80 bg-card p-6 sm:p-8 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-lg rounded-xl border border-border/30 bg-card/95 backdrop-blur-2xl p-6 sm:p-8 space-y-4 glow-border shadow-2xl">
             <h2 className="text-xl font-black text-foreground">Cadastrar Novo Curso</h2>
             <form onSubmit={handleCreateCourse} className="space-y-4">
               <div>
@@ -194,7 +194,7 @@ export default function StudiesPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: Arquitetura de Software em Microsserviços"
-                  className="w-full px-4 py-3 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-semibold"
+                  className="w-full px-4 py-3 rounded-lg border border-border/40 bg-background/80 text-foreground text-sm outline-none input-glow font-semibold"
                   autoFocus
                 />
               </div>
@@ -206,7 +206,7 @@ export default function StudiesPage() {
                   value={institution}
                   onChange={(e) => setInstitution(e.target.value)}
                   placeholder="Ex: Alura, Udemy, FIAP"
-                  className="w-full px-4 py-3 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                  className="w-full px-4 py-3 rounded-lg border border-border/40 bg-background/80 text-foreground text-sm outline-none input-glow font-medium"
                 />
               </div>
 
@@ -218,7 +218,7 @@ export default function StudiesPage() {
                   max="100"
                   value={totalModules}
                   onChange={(e) => setTotalModules(Number(e.target.value))}
-                  className="w-full px-4 py-3 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-semibold"
+                  className="w-full px-4 py-3 rounded-lg border border-border/40 bg-background/80 text-foreground text-sm outline-none input-glow font-semibold"
                 />
               </div>
 
@@ -226,14 +226,14 @@ export default function StudiesPage() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl text-sm font-bold text-muted-foreground hover:bg-muted"
+                  className="px-5 py-2.5 rounded-lg text-sm font-bold text-muted-foreground hover:bg-muted/40 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading || !name.trim()}
-                  className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-sm shadow-md shadow-primary/25"
+                  className="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary/90 glow-border-hover text-primary-foreground font-black text-sm shadow-lg shadow-primary/25 transition-all"
                 >
                   {loading ? "Salvando..." : "Cadastrar Curso"}
                 </button>

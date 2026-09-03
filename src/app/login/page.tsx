@@ -49,10 +49,10 @@ function LoginForm() {
   return (
     <div className="w-full max-w-md relative z-10 animate-fade-in">
       {/* Card */}
-      <div className="p-8 sm:p-10 rounded-3xl border border-border/80 bg-card/95 backdrop-blur-2xl shadow-2xl space-y-6">
+      <div className="p-8 sm:p-10 rounded-xl border border-border/30 bg-card/90 backdrop-blur-2xl glow-border-animated space-y-6">
         {/* Brand Header */}
         <div className="text-center space-y-2">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl overflow-hidden shadow-xl shadow-primary/25 mb-2 bg-background/80 border border-border/60 p-1.5">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-xl overflow-hidden shadow-xl shadow-primary/25 mb-2 bg-background/80 border border-border/60 p-1.5">
             <Image
               src="/logo.svg"
               alt="Life OS Logo"
@@ -83,7 +83,7 @@ function LoginForm() {
               onChange={(e) => setLogin(e.target.value)}
               placeholder="Digite seu e-mail ou nome de usuário"
               disabled={loading}
-              className="w-full px-4 py-3 rounded-2xl border border-border/70 bg-background text-foreground text-xs focus:ring-2 focus:ring-primary/40 outline-none font-medium shadow-xs transition-all placeholder:text-muted-foreground/60"
+              className="w-full px-4 py-3 rounded-lg border border-border/40 bg-background/80 text-foreground text-xs input-glow outline-none font-medium shadow-xs transition-all placeholder:text-muted-foreground/60"
               autoFocus
               autoComplete="username"
             />
@@ -101,7 +101,7 @@ function LoginForm() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="Digite sua senha"
                 disabled={loading}
-                className="w-full px-4 py-3 pr-11 rounded-2xl border border-border/70 bg-background text-foreground text-xs focus:ring-2 focus:ring-primary/40 outline-none font-medium shadow-xs transition-all placeholder:text-muted-foreground/60"
+                className="w-full px-4 py-3 pr-11 rounded-lg border border-border/40 bg-background/80 text-foreground text-xs input-glow outline-none font-medium shadow-xs transition-all placeholder:text-muted-foreground/60"
                 autoComplete="current-password"
               />
               <button
@@ -118,7 +118,7 @@ function LoginForm() {
           <button
             type="submit"
             disabled={loading || !login.trim() || !password}
-            className="w-full py-3.5 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs shadow-lg shadow-primary/30 active:scale-[0.98] disabled:opacity-40 transition-all flex items-center justify-center gap-2 mt-2"
+            className="w-full py-3.5 rounded-lg bg-primary hover:bg-primary/90 glow-border-hover text-primary-foreground font-black text-xs shadow-lg shadow-primary/25 active:scale-[0.98] disabled:opacity-40 transition-all flex items-center justify-center gap-2 mt-2"
           >
             <span>{loading ? "Autenticando..." : "Entrar no Sistema"}</span>
             <ArrowRight className="w-4 h-4" />
@@ -136,10 +136,35 @@ function LoginForm() {
 
 export default function LoginPage() {
   return (
-    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-b from-background via-background/90 to-card/50 relative overflow-hidden">
-      {/* Background Decorative Glows */}
-      <div className="absolute -top-40 -left-40 w-96 h-96 bg-primary/20 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-40 -right-40 w-96 h-96 bg-purple-500/15 rounded-full blur-3xl pointer-events-none" />
+    <div className="min-h-screen w-full flex items-center justify-center p-4 bg-gradient-to-b from-background via-background/90 to-card/50 relative overflow-hidden grain-overlay">
+      {/* Grid Lines Background */}
+      <div className="absolute inset-0 grid-lines pointer-events-none" />
+
+      {/* Animated Spotlights */}
+      <div
+        className="spotlight top-0 left-1/4 -translate-x-1/2"
+        style={{
+          "--spotlight-start": "-25deg",
+          "--spotlight-end": "15deg",
+          "--spotlight-duration": "7s",
+        } as React.CSSProperties}
+      />
+      <div
+        className="spotlight top-0 left-1/2 -translate-x-1/2"
+        style={{
+          "--spotlight-start": "-10deg",
+          "--spotlight-end": "25deg",
+          "--spotlight-duration": "9s",
+        } as React.CSSProperties}
+      />
+      <div
+        className="spotlight top-0 right-1/4 translate-x-1/2"
+        style={{
+          "--spotlight-start": "-20deg",
+          "--spotlight-end": "20deg",
+          "--spotlight-duration": "11s",
+        } as React.CSSProperties}
+      />
 
       <Suspense fallback={<div className="text-xs text-muted-foreground">Carregando formulário...</div>}>
         <LoginForm />

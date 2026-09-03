@@ -51,12 +51,12 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 px-4 bg-background/80 backdrop-blur-md animate-fade-in">
       <div
-        className="relative w-full max-w-2xl bg-card text-card-foreground border rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[80vh]"
+        className="relative w-full max-w-2xl bg-card/95 text-card-foreground border border-border/30 rounded-xl glow-border shadow-2xl overflow-hidden flex flex-col max-h-[80vh] backdrop-blur-2xl"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center px-4 py-3 border-b gap-3 bg-muted/20">
+        <div className="flex items-center px-4 py-3 border-b border-border/30 gap-3 bg-muted/20">
           <Search className="w-5 h-5 text-muted-foreground" />
           <input
             ref={inputRef}
@@ -64,14 +64,14 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
             placeholder="Digite para buscar em tarefas, projetos, cursos, livros ou contas..."
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            className="flex-1 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground text-foreground"
+            className="flex-1 bg-transparent border-none outline-none text-sm placeholder:text-muted-foreground text-foreground input-glow"
           />
           {query && (
             <button onClick={() => setQuery("")} className="p-1 text-muted-foreground hover:text-foreground">
               <X className="w-4 h-4" />
             </button>
           )}
-          <kbd onClick={onClose} className="cursor-pointer text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground border">
+          <kbd onClick={onClose} className="cursor-pointer text-[11px] px-2 py-0.5 rounded bg-muted text-muted-foreground border border-border/40">
             ESC
           </kbd>
         </div>
@@ -89,7 +89,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                   <div
                     key={task.id}
                     onClick={() => navigateTo(`/today?highlight=${task.id}`)}
-                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-muted cursor-pointer transition-colors group"
+                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted cursor-pointer transition-colors group"
                   >
                     <span className="text-xs font-medium text-foreground">{task.title}</span>
                     <ArrowRight className="w-3.5 h-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -109,7 +109,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                   <div
                     key={p.id}
                     onClick={() => navigateTo("/projects")}
-                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-muted cursor-pointer"
+                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted cursor-pointer"
                   >
                     <span className="text-xs font-medium text-foreground">{p.name}</span>
                     <span className="text-[10px] text-primary">{p.progress}%</span>
@@ -129,7 +129,7 @@ export function GlobalSearchModal({ isOpen, onClose }: GlobalSearchModalProps) {
                   <div
                     key={f.id}
                     onClick={() => navigateTo("/finance")}
-                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-muted cursor-pointer"
+                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted cursor-pointer"
                   >
                     <span className="text-xs font-medium text-foreground">{f.title}</span>
                     <span className="text-[10px] text-emerald-500 font-semibold">{formatCurrency(f.amount)}</span>

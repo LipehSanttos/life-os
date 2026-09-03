@@ -37,14 +37,14 @@ export default function UpcomingPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-16">
       {/* Header */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 sm:p-8 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider mb-2">
             <CalendarDays className="w-5 h-5 text-blue-500" />
             <span>Planejamento</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-            Próximos Dias
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+            <span className="text-gradient">Próximos Dias</span>
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1.5 font-medium">
             Visualize seus compromissos futuros e antecipe prazos importantes.
@@ -94,14 +94,14 @@ export default function UpcomingPage() {
       {/* Grouped Tasks */}
       <div className="space-y-6">
         {Object.keys(groupedTasks).length === 0 ? (
-          <div className="p-12 rounded-3xl border border-border/70 bg-card/80 text-center text-sm sm:text-base text-muted-foreground font-medium">
+          <div className="p-12 rounded-xl border border-border/30 bg-card/60 text-center text-sm sm:text-base text-muted-foreground font-medium">
             🎉 Nenhuma tarefa agendada para o período selecionado.
           </div>
         ) : (
           Object.entries(groupedTasks).map(([date, dayTasks]) => (
             <div
               key={date}
-              className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-4"
+              className="p-6 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover space-y-4"
             >
               <div className="flex items-center gap-2 pb-2 border-b border-border/40 font-bold text-base text-foreground">
                 <CalendarIcon className="w-5 h-5 text-blue-500" />

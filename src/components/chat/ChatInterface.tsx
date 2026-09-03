@@ -132,7 +132,7 @@ export function ChatInterface() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-8.5rem)] rounded-3xl border border-border/70 bg-card/85 backdrop-blur-xl shadow-lg overflow-hidden">
+    <div className="flex flex-col h-[calc(100vh-8.5rem)] rounded-xl border border-border/30 bg-card/70 backdrop-blur-xl shadow-lg overflow-hidden glow-border">
       {/* Chat Messages Flow */}
       <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
         {messages.map((msg) => {
@@ -144,7 +144,7 @@ export function ChatInterface() {
             >
               <div
                 className={cn(
-                  "w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xs",
+                  "w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs",
                   isUser
                     ? "bg-primary text-primary-foreground font-bold text-xs"
                     : "bg-gradient-to-tr from-indigo-600 to-indigo-500 text-white shadow-indigo-500/20 shadow-md"
@@ -156,7 +156,7 @@ export function ChatInterface() {
               <div className="space-y-3 flex-1 min-w-0">
                 <div
                   className={cn(
-                    "p-4 sm:p-5 rounded-3xl shadow-xs transition-all",
+                    "p-4 sm:p-5 rounded-xl shadow-xs transition-all",
                     isUser
                       ? "bg-primary text-primary-foreground rounded-tr-xs"
                       : "bg-muted/60 text-foreground border border-border/60 rounded-tl-xs"
@@ -183,10 +183,10 @@ export function ChatInterface() {
 
         {loading && (
           <div className="flex gap-3 max-w-xl mr-auto animate-pulse">
-            <div className="w-10 h-10 rounded-2xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-indigo-600 text-white flex items-center justify-center flex-shrink-0">
               <Bot className="w-5 h-5" />
             </div>
-            <div className="p-4 sm:p-5 rounded-3xl bg-muted/60 text-muted-foreground text-sm font-medium border border-border/60">
+            <div className="p-4 sm:p-5 rounded-xl bg-muted/60 text-muted-foreground text-sm font-medium border border-border/60">
               Assistente Life OS processando sua mensagem...
             </div>
           </div>
@@ -195,12 +195,12 @@ export function ChatInterface() {
       </div>
 
       {/* Quick Prompt Chips */}
-      <div className="px-4 py-2 border-t border-border/40 bg-card/50 flex items-center gap-2 overflow-x-auto scrollbar-none">
+      <div className="px-4 py-2 border-t border-border/30 bg-card/30 flex items-center gap-2 overflow-x-auto scrollbar-none">
         {quickPrompts.map((p, idx) => (
           <button
             key={idx}
             onClick={() => handleSend(p)}
-            className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-muted/70 hover:bg-primary hover:text-primary-foreground border border-border/60 transition-all flex-shrink-0"
+            className="px-3.5 py-1.5 rounded-full text-xs font-bold bg-muted/30 hover:bg-primary hover:text-primary-foreground border border-border/60 transition-all flex-shrink-0"
           >
             {p}
           </button>
@@ -208,8 +208,8 @@ export function ChatInterface() {
       </div>
 
       {/* Input Box */}
-      <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="p-4 border-t border-border/40 bg-card">
-        <div className="flex items-center gap-2 rounded-2xl border border-border/70 bg-background px-4 py-2 focus-within:ring-2 focus-within:ring-primary/40 focus-within:border-primary transition-all">
+      <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className="p-4 border-t border-border/30 bg-card">
+        <div className="flex items-center gap-2 rounded-lg border border-border/50 bg-background/80 px-4 py-2 input-glow transition-all">
           <input
             type="text"
             value={input}
@@ -223,7 +223,7 @@ export function ChatInterface() {
             type="button"
             onClick={handleVoice}
             className={cn(
-              "p-2 rounded-xl text-muted-foreground hover:text-foreground transition-colors",
+              "p-2 rounded-lg text-muted-foreground hover:text-foreground transition-colors",
               isRecording && "bg-rose-500 text-white animate-pulse"
             )}
             title="Gravar por voz"
@@ -234,7 +234,7 @@ export function ChatInterface() {
           <button
             type="submit"
             disabled={loading || !input.trim()}
-            className="p-2.5 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-40 shadow-xs"
+            className="p-2.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-all disabled:opacity-40 shadow-xs"
             title="Enviar mensagem"
           >
             <Send className="w-4 h-4" />

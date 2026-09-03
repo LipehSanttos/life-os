@@ -123,14 +123,14 @@ export default function FinancePage() {
   return (
     <div className="max-w-6xl mx-auto space-y-6 pb-20">
       {/* Header */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 sm:p-8 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider mb-2">
             <DollarSign className="w-5 h-5 text-teal-400" />
             <span>Controle Financeiro & Contas</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-            Finanças & Contas
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+            <span className="text-gradient">Finanças & Contas</span>
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1.5 font-medium">
             Acompanhe contas a pagar, faturas mensais, controle os vencimentos e mantenha seu saldo organizado.
@@ -139,7 +139,7 @@ export default function FinancePage() {
 
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-md shadow-primary/25 active:scale-95 transition-all self-start md:self-auto"
+          className="flex items-center gap-2 px-5 py-3 rounded-lg bg-primary hover:bg-primary/90 glow-border-hover text-primary-foreground font-bold text-sm shadow-lg shadow-primary/25 active:scale-95 transition-all self-start md:self-auto"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Nova Conta</span>
@@ -148,7 +148,7 @@ export default function FinancePage() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="p-6 rounded-3xl border border-rose-500/30 bg-rose-500/5 backdrop-blur-xl shadow-xs space-y-1">
+        <div className="p-6 rounded-xl border border-rose-500/20 bg-rose-500/5 backdrop-blur-xl glow-border-hover space-y-1">
           <span className="text-xs font-bold uppercase tracking-wider text-rose-400">Total Pendente</span>
           <div className="text-2xl sm:text-3xl font-black text-rose-500">{formatCurrency(totalPending)}</div>
           <p className="text-xs text-muted-foreground font-medium">
@@ -156,7 +156,7 @@ export default function FinancePage() {
           </p>
         </div>
 
-        <div className="p-6 rounded-3xl border border-emerald-500/30 bg-emerald-500/5 backdrop-blur-xl shadow-xs space-y-1">
+        <div className="p-6 rounded-xl border border-emerald-500/20 bg-emerald-500/5 backdrop-blur-xl glow-border-hover space-y-1">
           <span className="text-xs font-bold uppercase tracking-wider text-emerald-400">Total Pago</span>
           <div className="text-2xl sm:text-3xl font-black text-emerald-500">{formatCurrency(totalPaid)}</div>
           <p className="text-xs text-muted-foreground font-medium">
@@ -164,7 +164,7 @@ export default function FinancePage() {
           </p>
         </div>
 
-        <div className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-1 sm:col-span-2 lg:col-span-1">
+        <div className="p-6 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover space-y-1 sm:col-span-2 lg:col-span-1">
           <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Total de Registros</span>
           <div className="text-2xl sm:text-3xl font-black text-foreground">{reminders.length}</div>
           <p className="text-xs text-muted-foreground font-medium">Contas e lembretes cadastrados</p>
@@ -172,7 +172,7 @@ export default function FinancePage() {
       </div>
 
       {/* Bills List */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-4">
+      <div className="p-6 sm:p-8 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover space-y-4">
         <h2 className="font-bold text-base text-foreground pb-3 border-b border-border/40">
           Todas as Contas ({reminders.length})
         </h2>
@@ -263,8 +263,8 @@ export default function FinancePage() {
 
       {/* New Bill Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-lg rounded-3xl border border-border/80 bg-card p-6 sm:p-8 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-lg rounded-xl border border-border/30 bg-card/95 backdrop-blur-2xl p-6 sm:p-8 space-y-4 glow-border shadow-2xl">
             <h2 className="text-xl font-black text-foreground">Nova Conta a Pagar</h2>
             <form onSubmit={handleCreate} className="space-y-4">
               <div>
@@ -274,7 +274,7 @@ export default function FinancePage() {
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
                   placeholder="Ex: Fatura Cartão de Crédito ou Internet"
-                  className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-semibold"
+                  className="w-full px-4 py-2.5 rounded-lg border border-border/40 bg-background/80 text-foreground text-xs outline-none input-glow font-semibold"
                   autoFocus
                   required
                 />
@@ -287,7 +287,7 @@ export default function FinancePage() {
                   value={recipient}
                   onChange={(e) => setRecipient(e.target.value)}
                   placeholder="Ex: Provedor Fibra, Banco Inter"
-                  className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                  className="w-full px-4 py-2.5 rounded-lg border border-border/40 bg-background/80 text-foreground text-xs outline-none input-glow font-medium"
                 />
               </div>
 
@@ -301,7 +301,7 @@ export default function FinancePage() {
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="0,00"
-                    className="w-full px-4 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-semibold"
+                    className="w-full px-4 py-2.5 rounded-lg border border-border/40 bg-background/80 text-foreground text-xs outline-none input-glow font-semibold"
                     required
                   />
                 </div>
@@ -312,7 +312,7 @@ export default function FinancePage() {
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-xs outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border/40 bg-background/80 text-foreground text-xs outline-none input-glow font-medium"
                     required
                   />
                 </div>
@@ -334,14 +334,14 @@ export default function FinancePage() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl text-xs font-bold text-muted-foreground hover:bg-muted"
+                  className="px-5 py-2.5 rounded-lg text-xs font-bold text-muted-foreground hover:bg-muted/40 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading || !title.trim() || !amount || !dueDate}
-                  className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs shadow-md shadow-primary/25 disabled:opacity-50"
+                  className="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary/90 glow-border-hover text-primary-foreground font-black text-xs shadow-lg shadow-primary/25 disabled:opacity-50 transition-all"
                 >
                   {loading ? "Salvando..." : "Salvar Conta"}
                 </button>

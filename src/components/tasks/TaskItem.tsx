@@ -99,12 +99,12 @@ export function TaskItem({ task, onStatusChange, onEdit, onDelete }: TaskItemPro
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className={cn(
-        "group relative flex items-center justify-between p-3.5 sm:p-4 rounded-2xl border transition-all duration-200",
+        "group relative flex items-center justify-between p-3.5 sm:p-4 rounded-xl border transition-all duration-200",
         completed
-          ? "bg-muted/30 border-border/40 opacity-70"
+          ? "bg-muted/20 border-border/20 opacity-70"
           : isOverdue
-          ? "bg-rose-500/5 border-rose-500/30 hover:border-rose-500/50 hover:bg-rose-500/10"
-          : "bg-card/90 border-border/70 hover:border-primary/40 hover:bg-card hover:shadow-sm"
+          ? "bg-rose-500/5 border-rose-500/20 hover:border-rose-500/40 hover:bg-rose-500/8"
+          : "bg-card/70 border-border/30 hover:bg-card/90 glow-border-hover"
       )}
     >
       {/* Left: Checkbox + Content */}
@@ -207,7 +207,7 @@ export function TaskItem({ task, onStatusChange, onEdit, onDelete }: TaskItemPro
             window.open(gCalUrl, "_blank", "noopener,noreferrer");
             toast.success("Abrindo Google Agenda...");
           }}
-          className="p-2 rounded-xl text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
+          className="p-2 rounded-lg text-muted-foreground hover:text-blue-400 hover:bg-blue-500/10 transition-colors"
           title="Adicionar ao Google Agenda"
         >
           <CalendarPlus className="w-4 h-4" />
@@ -216,7 +216,7 @@ export function TaskItem({ task, onStatusChange, onEdit, onDelete }: TaskItemPro
         {onEdit && (
           <button
             onClick={() => onEdit(task)}
-            className="p-2 rounded-xl text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
+            className="p-2 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/80 transition-colors"
             title="Editar tarefa"
           >
             <Edit2 className="w-4 h-4" />
@@ -225,7 +225,7 @@ export function TaskItem({ task, onStatusChange, onEdit, onDelete }: TaskItemPro
         {onDelete && (
           <button
             onClick={() => onDelete(task.id)}
-            className="p-2 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+            className="p-2 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
             title="Excluir tarefa"
           >
             <Trash2 className="w-4 h-4" />

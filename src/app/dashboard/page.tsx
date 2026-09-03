@@ -127,7 +127,7 @@ export default function DashboardPage() {
         <div className="lg:col-span-2 space-y-6">
           {/* Overdue Tasks */}
           {overdueTasks.length > 0 && (
-            <div className="p-6 rounded-3xl border border-rose-500/30 bg-rose-500/5 backdrop-blur-xl shadow-xs space-y-4">
+            <div className="p-6 rounded-xl border border-rose-500/20 bg-rose-500/5 backdrop-blur-xl glow-border-hover space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 text-rose-500 font-bold text-base">
                   <AlertCircle className="w-5 h-5" />
@@ -159,7 +159,7 @@ export default function DashboardPage() {
           )}
 
           {/* Today Tasks */}
-          <div className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-4">
+          <div className="p-6 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-base text-foreground">
                 <Sun className="w-5 h-5 text-amber-500" />
@@ -198,7 +198,7 @@ export default function DashboardPage() {
 
           {/* Upcoming Preview */}
           {upcomingTasks.length > 0 && (
-            <div className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-4">
+            <div className="p-6 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover space-y-4">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2 font-bold text-base text-foreground">
                   <CalendarDays className="w-5 h-5 text-blue-500" />
@@ -234,7 +234,7 @@ export default function DashboardPage() {
         {/* Right Column: Projects, Studies & Finances summary */}
         <div className="space-y-6">
           {/* Active Projects */}
-          <div className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-4">
+          <div className="p-6 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-base text-foreground">
                 <FolderKanban className="w-5 h-5 text-emerald-500" />
@@ -253,7 +253,7 @@ export default function DashboardPage() {
                   <Link
                     key={proj.id}
                     href="/projects"
-                    className="block p-3.5 rounded-2xl bg-muted/40 hover:bg-muted/80 border border-border/50 transition-all group"
+                    className="block p-3.5 rounded-lg bg-muted/30 hover:bg-muted/50 border border-border/30 transition-all group"
                   >
                     <div className="flex items-center justify-between mb-2">
                       <span className="font-bold text-sm text-foreground group-hover:text-primary transition-colors">
@@ -276,7 +276,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Courses & Studies */}
-          <div className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-4">
+          <div className="p-6 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-base text-foreground">
                 <GraduationCap className="w-5 h-5 text-indigo-400" />
@@ -292,7 +292,7 @@ export default function DashboardPage() {
                 <p className="text-sm text-muted-foreground">Nenhum curso em andamento.</p>
               ) : (
                 courses.slice(0, 2).map((c) => (
-                  <div key={c.id} className="p-3.5 rounded-2xl bg-muted/40 border border-border/50 space-y-2">
+                  <div key={c.id} className="p-3.5 rounded-lg bg-muted/30 border border-border/30 space-y-2">
                     <div className="flex items-center justify-between">
                       <span className="font-bold text-sm text-foreground">{c.name}</span>
                       <span className="text-xs text-indigo-400 font-bold">{c.progress}%</span>
@@ -310,7 +310,7 @@ export default function DashboardPage() {
           </div>
 
           {/* Financial Reminders */}
-          <div className="p-6 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-4">
+          <div className="p-6 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover space-y-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2 font-bold text-base text-foreground">
                 <DollarSign className="w-5 h-5 text-teal-400" />
@@ -328,7 +328,7 @@ export default function DashboardPage() {
                 finances.slice(0, 3).map((f) => (
                   <div
                     key={f.id}
-                    className="flex items-center justify-between p-3 rounded-xl bg-muted/30 border border-border/50 text-sm"
+                    className="flex items-center justify-between p-3 rounded-lg bg-muted/20 border border-border/30 text-sm"
                   >
                     <div>
                       <span className="font-bold text-foreground block">{f.title}</span>

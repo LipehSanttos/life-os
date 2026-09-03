@@ -67,12 +67,12 @@ export function Topbar({ onOpenSearch, onOpenMobileMenu }: TopbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-20 flex items-center justify-between h-16 px-4 md:px-8 border-b border-border/40 bg-card/60 backdrop-blur-xl">
+    <header className="sticky top-0 z-20 flex items-center justify-between h-16 px-4 md:px-8 border-b border-border/30 bg-card/30 backdrop-blur-2xl">
       {/* Left: Mobile Menu & Search */}
       <div className="flex items-center gap-3">
         <button
           onClick={onOpenMobileMenu}
-          className="p-2.5 rounded-xl hover:bg-muted text-muted-foreground md:hidden transition-colors"
+          className="p-2.5 rounded-lg hover:bg-muted/40 text-muted-foreground md:hidden transition-colors"
           title="Menu"
         >
           <Menu className="w-5 h-5" />
@@ -80,7 +80,7 @@ export function Topbar({ onOpenSearch, onOpenMobileMenu }: TopbarProps) {
 
         <button
           onClick={onOpenSearch}
-          className="flex items-center gap-3 px-4 py-2.5 rounded-xl border border-border/60 bg-background/60 hover:bg-muted/60 text-muted-foreground hover:text-foreground text-sm transition-all w-56 sm:w-80 md:w-96 shadow-xs group"
+          className="flex items-center gap-3 px-4 py-2.5 rounded-lg border border-border/40 bg-background/50 hover:bg-muted/30 input-glow text-muted-foreground hover:text-foreground text-sm transition-all w-56 sm:w-80 md:w-96 shadow-xs group"
         >
           <Search className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors" />
           <span className="flex-1 text-left truncate text-sm font-medium">Buscar tarefas, projetos, contas...</span>
@@ -94,9 +94,9 @@ export function Topbar({ onOpenSearch, onOpenMobileMenu }: TopbarProps) {
       <div className="flex items-center gap-2">
         <Link
           href="/chat"
-          className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/25 text-sm font-semibold shadow-xs transition-all hover:scale-[1.02]"
+          className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary border border-primary/25 glow-border-hover text-sm font-semibold shadow-xs transition-all hover:scale-[1.02]"
         >
-          <Sparkles className="w-4 h-4 animate-pulse text-indigo-400" />
+          <Sparkles className="w-4 h-4 animate-pulse text-primary" />
           <span>Falar com a IA</span>
         </Link>
 
@@ -104,7 +104,7 @@ export function Topbar({ onOpenSearch, onOpenMobileMenu }: TopbarProps) {
         <div className="relative">
           <button
             onClick={() => setShowNotifications(!showNotifications)}
-            className="relative p-2.5 rounded-xl hover:bg-muted/70 text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border/50"
+            className="relative p-2.5 rounded-lg hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border/50"
             title="Central de Avisos e Aniversários"
           >
             <Bell className="w-4 h-4" />
@@ -116,7 +116,7 @@ export function Topbar({ onOpenSearch, onOpenMobileMenu }: TopbarProps) {
           </button>
 
           {showNotifications && (
-            <div className="absolute right-0 mt-2 w-80 sm:w-96 p-4 rounded-2xl border border-border/70 bg-card text-card-foreground shadow-2xl z-50 animate-fade-in max-h-[80vh] overflow-y-auto">
+            <div className="absolute right-0 mt-2 w-80 sm:w-96 p-4 rounded-xl border border-border/30 bg-card/95 backdrop-blur-2xl glow-border text-card-foreground shadow-2xl z-50 animate-fade-in max-h-[80vh] overflow-y-auto">
               <div className="flex items-center justify-between pb-3 border-b border-border/40 mb-3">
                 <span className="font-bold text-sm text-foreground flex items-center gap-2">
                   <Bell className="w-4 h-4 text-primary" />
@@ -144,7 +144,7 @@ export function Topbar({ onOpenSearch, onOpenMobileMenu }: TopbarProps) {
                         {data.birthdays.map((b) => (
                           <div
                             key={b.id}
-                            className={`p-3 rounded-xl border text-sm flex items-start justify-between gap-2 transition-all ${
+                            className={`p-3 rounded-lg border text-sm flex items-start justify-between gap-2 transition-all ${
                               b.isToday
                                 ? "bg-rose-500/20 border-rose-500/50 shadow-xs shadow-rose-500/10"
                                 : "bg-rose-500/10 border-rose-500/20"
@@ -182,7 +182,7 @@ export function Topbar({ onOpenSearch, onOpenMobileMenu }: TopbarProps) {
                         {data.overdueTasks.map((t) => (
                           <div
                             key={t.id}
-                            className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-sm flex flex-col gap-1"
+                            className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/20 text-sm flex flex-col gap-1"
                           >
                             <span className="font-semibold text-amber-300">{t.title}</span>
                             <span className="text-xs text-muted-foreground">
@@ -203,7 +203,7 @@ export function Topbar({ onOpenSearch, onOpenMobileMenu }: TopbarProps) {
                         {data.bills.map((bill) => (
                           <div
                             key={bill.id}
-                            className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-sm flex items-center justify-between gap-2"
+                            className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-sm flex items-center justify-between gap-2"
                           >
                             <div className="flex flex-col gap-0.5">
                               <span className="font-semibold text-emerald-300">{bill.title}</span>
@@ -231,7 +231,7 @@ export function Topbar({ onOpenSearch, onOpenMobileMenu }: TopbarProps) {
         {mounted && (
           <button
             onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="p-2.5 rounded-xl hover:bg-muted/70 text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border/50"
+            className="p-2.5 rounded-lg hover:bg-muted/40 text-muted-foreground hover:text-foreground transition-colors border border-transparent hover:border-border/50"
             title={theme === "dark" ? "Mudar para tema claro" : "Mudar para tema escuro"}
           >
             {theme === "dark" ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4 text-slate-700" />}
@@ -242,7 +242,7 @@ export function Topbar({ onOpenSearch, onOpenMobileMenu }: TopbarProps) {
         <button
           type="button"
           onClick={handleLogout}
-          className="p-2.5 rounded-xl hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors border border-transparent hover:border-rose-500/20"
+          className="p-2.5 rounded-lg hover:bg-rose-500/10 text-muted-foreground hover:text-rose-400 transition-colors border border-transparent hover:border-rose-500/20"
           title="Encerrar sessão / Sair"
         >
           <LogOut className="w-4 h-4" />

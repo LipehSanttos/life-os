@@ -121,3 +121,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: error.message || "Erro ao buscar notificações." }, { status: 500 });
   }
 }
+

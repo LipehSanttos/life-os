@@ -63,14 +63,16 @@ export function CategoryModal({ isOpen, onClose, onSaved, categoryToEdit }: Cate
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
-      <div className="relative w-full max-w-md bg-card text-card-foreground border rounded-2xl shadow-2xl p-6 space-y-4">
-        <div className="flex items-center justify-between pb-3 border-b">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-fade-in">
+      <div className="relative w-full max-w-md bg-card/95 backdrop-blur-2xl text-card-foreground border border-border/30 rounded-xl glow-border shadow-2xl p-6 space-y-4">
+        <div className="flex items-center justify-between pb-3 border-b border-border/30">
           <div className="flex items-center gap-2">
             <Tags className="w-5 h-5 text-primary" />
             <h2 className="text-sm font-semibold">{categoryToEdit ? "Editar Categoria" : "Nova Categoria"}</h2>
           </div>
-          <button onClick={onClose}><X className="w-5 h-5" /></button>
+          <button onClick={onClose} className="text-muted-foreground hover:text-foreground transition-colors">
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -80,7 +82,7 @@ export function CategoryModal({ isOpen, onClose, onSaved, categoryToEdit }: Cate
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-3.5 py-2.5 rounded-xl border bg-background text-sm outline-none"
+              className="w-full px-3.5 py-2.5 rounded-lg border border-border/50 bg-background/80 text-sm outline-none input-glow transition-all"
               autoFocus
             />
           </div>
@@ -98,9 +100,15 @@ export function CategoryModal({ isOpen, onClose, onSaved, categoryToEdit }: Cate
               ))}
             </div>
           </div>
-          <div className="flex items-center justify-end gap-2 pt-4 border-t">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-medium">Cancelar</button>
-            <button type="submit" disabled={loading} className="px-5 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold shadow-md">
+          <div className="flex items-center justify-end gap-2 pt-4 border-t border-border/30">
+            <button type="button" onClick={onClose} className="px-4 py-2 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors">
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              disabled={loading}
+              className="px-5 py-2 rounded-lg bg-primary hover:bg-primary/90 glow-border-hover text-primary-foreground text-xs font-semibold shadow-lg shadow-primary/25 active:scale-[0.98] transition-all disabled:opacity-50"
+            >
               Salvar Categoria
             </button>
           </div>

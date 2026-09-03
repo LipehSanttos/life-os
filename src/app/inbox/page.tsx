@@ -29,13 +29,13 @@ export default function InboxPage() {
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-16">
       {/* Header */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs">
+      <div className="p-6 sm:p-8 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border">
         <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider mb-2">
           <Inbox className="w-5 h-5 text-blue-500" />
           <span>Caixa de Entrada</span>
         </div>
-        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-          Inbox
+        <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+          <span className="text-gradient">Inbox</span>
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground mt-1.5 font-medium">
           Capture ideias e pendências instantaneamente para organizar e categorizar depois.
@@ -51,7 +51,7 @@ export default function InboxPage() {
       </div>
 
       {/* Tasks List */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-4">
+      <div className="p-6 sm:p-8 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover space-y-4">
         <div className="flex items-center justify-between pb-3 border-b border-border/40">
           <span className="font-bold text-base text-foreground">Itens não processados ({tasks.length})</span>
         </div>

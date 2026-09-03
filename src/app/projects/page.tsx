@@ -98,14 +98,14 @@ export default function ProjectsPage() {
   return (
     <div className="max-w-7xl mx-auto space-y-6 pb-16">
       {/* Header */}
-      <div className="p-6 sm:p-8 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="p-6 sm:p-8 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <div className="flex items-center gap-2 text-primary font-bold text-sm uppercase tracking-wider mb-2">
             <FolderKanban className="w-5 h-5 text-emerald-500" />
             <span>Gestão Estratégica</span>
           </div>
-          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight text-foreground">
-            Projetos
+          <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black tracking-tight">
+            <span className="text-gradient">Projetos</span>
           </h1>
           <p className="text-sm sm:text-base text-muted-foreground mt-1.5 font-medium">
             Organize suas iniciativas em tarefas e acompanhe a evolução automática do progresso.
@@ -114,7 +114,7 @@ export default function ProjectsPage() {
 
         <button
           onClick={() => setModalOpen(true)}
-          className="flex items-center gap-2 px-5 py-3 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-sm shadow-md shadow-primary/25 active:scale-95 transition-all self-start md:self-auto"
+          className="flex items-center gap-2 px-5 py-3 rounded-lg bg-primary hover:bg-primary/90 glow-border-hover text-primary-foreground font-bold text-sm shadow-lg shadow-primary/25 active:scale-95 transition-all self-start md:self-auto"
         >
           <Plus className="w-4 h-4 stroke-[3]" />
           <span>Novo Projeto</span>
@@ -130,7 +130,7 @@ export default function ProjectsPage() {
           </h3>
 
           {projects.length === 0 ? (
-            <div className="p-8 rounded-3xl border border-border/70 bg-card/80 text-center text-sm text-muted-foreground">
+            <div className="p-8 rounded-xl border border-border/30 bg-card/60 text-center text-sm text-muted-foreground">
               Nenhum projeto cadastrado. Clique em <strong>Novo Projeto</strong> para começar.
             </div>
           ) : (
@@ -140,10 +140,10 @@ export default function ProjectsPage() {
                 <div
                   key={proj.id}
                   onClick={() => setSelectedProject(proj)}
-                  className={`p-5 rounded-3xl border transition-all cursor-pointer space-y-3 ${
+                  className={`p-5 rounded-xl border transition-all cursor-pointer space-y-3 ${
                     isSelected
-                      ? "bg-primary/10 border-primary ring-2 ring-primary/20 shadow-sm"
-                      : "bg-card/80 border-border/70 hover:border-primary/40 hover:bg-card"
+                      ? "bg-primary/10 border-primary/40 glow-border-active"
+                      : "bg-card/60 border-border/30 hover:bg-card/80 glow-border-hover"
                   }`}
                 >
                   <div className="flex items-center justify-between">
@@ -173,7 +173,7 @@ export default function ProjectsPage() {
         {/* Right Column: Selected Project Detail & Tasks */}
         <div className="lg:col-span-2">
           {selectedProject ? (
-            <div className="p-6 sm:p-8 rounded-3xl border border-border/70 bg-card/80 backdrop-blur-xl shadow-xs space-y-6">
+            <div className="p-6 sm:p-8 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover space-y-6">
               <div className="flex items-start justify-between gap-4 pb-4 border-b border-border/40">
                 <div className="space-y-1">
                   <div className="flex items-center gap-2">
@@ -183,7 +183,7 @@ export default function ProjectsPage() {
                     </span>
                   </div>
                   {selectedProject.description && (
-                    <p className="text-sm text-muted-foreground font-medium leading-relaxed">
+                    <p className="text-sm text-muted-foreground font-medium max-w-xl">
                       {selectedProject.description}
                     </p>
                   )}
@@ -191,20 +191,20 @@ export default function ProjectsPage() {
 
                 <button
                   onClick={() => handleDeleteProject(selectedProject.id)}
-                  className="p-2.5 rounded-xl text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
-                  title="Excluir projeto"
+                  className="p-2.5 rounded-lg text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10 transition-colors"
+                  title="Excluir Projeto"
                 >
-                  <Trash2 className="w-5 h-5" />
+                  <Trash2 className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Progress Summary Card */}
-              <div className="p-5 rounded-2xl bg-muted/40 border border-border/60 space-y-2">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-foreground">Progresso Geral</span>
-                  <span className="text-sm font-black text-emerald-400">{selectedProject.progress}% Concluído</span>
+              {/* Progress */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between text-sm font-bold">
+                  <span className="text-muted-foreground">Progresso Geral</span>
+                  <span className="text-emerald-500">{selectedProject.progress}%</span>
                 </div>
-                <div className="w-full h-3 rounded-full bg-border/80 overflow-hidden">
+                <div className="w-full h-3 rounded-full bg-border/60 overflow-hidden">
                   <div
                     className="h-full bg-emerald-500 rounded-full transition-all duration-500"
                     style={{ width: `${selectedProject.progress}%` }}
@@ -221,7 +221,7 @@ export default function ProjectsPage() {
                       setTaskToEdit(null);
                       setTaskModalOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/15 text-primary hover:bg-primary/25 text-xs font-bold transition-all"
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary/15 text-primary hover:bg-primary/25 text-xs font-bold transition-all"
                   >
                     <Plus className="w-3.5 h-3.5" />
                     <span>Adicionar Tarefa</span>
@@ -254,7 +254,7 @@ export default function ProjectsPage() {
               </div>
             </div>
           ) : (
-            <div className="p-12 rounded-3xl border border-border/70 bg-card/80 text-center text-sm sm:text-base text-muted-foreground font-medium">
+            <div className="p-12 rounded-xl border border-border/30 bg-card/60 text-center text-sm sm:text-base text-muted-foreground font-medium">
               Selecione um projeto ao lado para visualizar suas tarefas e progresso.
             </div>
           )}
@@ -263,8 +263,8 @@ export default function ProjectsPage() {
 
       {/* New Project Modal */}
       {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
-          <div className="w-full max-w-lg rounded-3xl border border-border/80 bg-card p-6 sm:p-8 space-y-4 shadow-2xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-background/80 backdrop-blur-md animate-fade-in">
+          <div className="w-full max-w-lg rounded-xl border border-border/30 bg-card/95 backdrop-blur-2xl p-6 sm:p-8 space-y-4 glow-border shadow-2xl">
             <h2 className="text-xl font-black text-foreground">Novo Projeto</h2>
             <form onSubmit={handleCreateProject} className="space-y-4">
               <div>
@@ -274,7 +274,7 @@ export default function ProjectsPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   placeholder="Ex: Redesign do Website"
-                  className="w-full px-4 py-3 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-semibold"
+                  className="w-full px-4 py-3 rounded-lg border border-border/40 bg-background/80 text-foreground text-sm outline-none input-glow font-semibold"
                   autoFocus
                 />
               </div>
@@ -286,7 +286,7 @@ export default function ProjectsPage() {
                   onChange={(e) => setDescription(e.target.value)}
                   placeholder="Breve resumo sobre o objetivo do projeto..."
                   rows={3}
-                  className="w-full px-4 py-3 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 resize-none font-medium"
+                  className="w-full px-4 py-3 rounded-lg border border-border/40 bg-background/80 text-foreground text-sm outline-none input-glow resize-none font-medium"
                 />
               </div>
 
@@ -296,7 +296,7 @@ export default function ProjectsPage() {
                   <select
                     value={categoryId}
                     onChange={(e) => setCategoryId(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-semibold"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border/40 bg-background/80 text-foreground text-sm outline-none input-glow font-semibold"
                   >
                     <option value="">Sem categoria</option>
                     {categories.map((c) => (
@@ -313,7 +313,7 @@ export default function ProjectsPage() {
                     type="date"
                     value={dueDate}
                     onChange={(e) => setDueDate(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-border/70 bg-background text-foreground text-sm outline-none focus:ring-2 focus:ring-primary/40 font-medium"
+                    className="w-full px-3.5 py-2.5 rounded-lg border border-border/40 bg-background/80 text-foreground text-sm outline-none input-glow font-medium"
                   />
                 </div>
               </div>
@@ -322,14 +322,14 @@ export default function ProjectsPage() {
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
-                  className="px-5 py-2.5 rounded-xl text-sm font-bold text-muted-foreground hover:bg-muted"
+                  className="px-5 py-2.5 rounded-lg text-sm font-bold text-muted-foreground hover:bg-muted/40 transition-colors"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
                   disabled={loading || !name.trim()}
-                  className="px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-sm shadow-md shadow-primary/25"
+                  className="px-6 py-2.5 rounded-lg bg-primary hover:bg-primary/90 glow-border-hover text-primary-foreground font-black text-sm shadow-lg shadow-primary/25 transition-all"
                 >
                   {loading ? "Criando..." : "Criar Projeto"}
                 </button>

@@ -15,13 +15,13 @@ interface StatCardProps {
 
 export function StatCard({ label, value, icon: Icon, color, href, subtitle }: StatCardProps) {
   const content = (
-    <div className="p-4 sm:p-5 rounded-2xl border border-border/70 bg-card/80 backdrop-blur-md shadow-xs hover:shadow-md transition-all hover:border-primary/30 group flex flex-col justify-between h-full">
+    <div className="p-4 sm:p-5 rounded-xl border border-border/30 bg-card/60 backdrop-blur-xl glow-border-hover transition-all group flex flex-col justify-between h-full">
       <div className="flex items-center justify-between mb-3">
         <span className="text-xs sm:text-sm font-bold text-muted-foreground uppercase tracking-wider group-hover:text-foreground transition-colors">
           {label}
         </span>
         <div
-          className="p-2.5 rounded-xl transition-transform group-hover:scale-110 shadow-xs"
+          className="p-2.5 rounded-lg transition-transform group-hover:scale-110 shadow-xs"
           style={{ backgroundColor: `${color}18`, color: color }}
         >
           <Icon className="w-5 h-5" />
