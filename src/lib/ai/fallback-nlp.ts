@@ -2,7 +2,7 @@
  * @file fallback-nlp.ts
  * @description Motor local determinístico de Processamento de Linguagem Natural (NLP) para o Life OS.
  * Fornece interpretação semântica profunda de solicitações, respostas a consultas de status/atraso
- * e agendamento de tarefas com higienização estrita de títulos, categorização e cálculo de horários.
+ * e agendamento de tarefas com fidelidade estrita aos valores digitados (NUNCA inventa valores).
  */
 
 import { prisma } from "@/lib/db";
@@ -20,7 +20,7 @@ import {
   isPast,
 } from "date-fns";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { extractCleanTaskTitleAndDescription } from "./sanitizer";
+import { extractCleanTaskTitleAndDescription, extractMonetaryValue, extractPageNumber } from "./sanitizer";
 
 export interface NLPResult {
   reply: string;
@@ -82,7 +82,7 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
     if (overdueBills.length > 0) {
       reply += `\n💰 **Contas Vencidas (${overdueBills.length}):**\n`;
       overdueBills.forEach((b) => {
-        reply += `- **${b.title}**: ${formatCurrency(b.amount)} - Vencimento: ${formatDate(b.dueDate)}\n`;
+        reply += `- **${b.title}**${b.amount ? `: ${formatCurrency(b.amount)}` : ""} - Vencimento: ${formatDate(b.dueDate)}\n`;
       });
     }
 
@@ -134,44 +134,42 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
     if (todayBills.length > 0) {
       reply += "\n💰 **Contas com Vencimento Hoje:**\n";
       todayBills.forEach((b) => {
-        reply += `- **${b.title}**: ${formatCurrency(b.amount)}\n`;
+        reply += `- **${b.title}**${b.amount ? `: ${formatCurrency(b.amount)}` : ""}\n`;
       });
     }
     return { reply };
   }
 
-  // 3. AÇÃO: Atualização de Leitura de Livro
-  if (lower.includes("lendo") || (lower.includes("livro") && (lower.includes("página") || lower.includes("pagina")))) {
-    const pageMatch = text.match(/p[áa]gina\s*(\d+)/i) || text.match(/(\d+)\s*p[áa]g/i);
-    const page = pageMatch ? parseInt(pageMatch[1], 10) : 1;
-
+  // 3. AÇÃO: Atualização de Leitura de Livro (fiel à página informada)
+  if (lower.includes("lendo") || (lower.includes("livro") && (lower.includes("página") || lower.includes("pagina") || lower.includes("pág")))) {
+    const page = extractPageNumber(text);
     const books = await prisma.book.findMany({ where: userFilter });
     let targetBook = books.find((b) => lower.includes(b.title.toLowerCase()));
     const bookTitle = targetBook ? targetBook.title : "Livro em Leitura";
+    const finalPage = page !== undefined ? page : (targetBook?.currentPage || 1);
 
     return {
-      reply: `Identifiquei o registro de leitura do livro **"${bookTitle}"** na página **${page}**. Deseja atualizar o progresso na sua biblioteca?`,
+      reply: `Identifiquei o registro de leitura do livro **"${bookTitle}"** na página **${finalPage}**. Deseja atualizar o progresso na sua biblioteca?`,
       action: {
         type: "UPDATE_BOOK",
         title: `Atualizar leitura: ${bookTitle}`,
-        summary: `Atualizar livro "${bookTitle}" para a página ${page}.`,
+        summary: `Atualizar livro "${bookTitle}" para a página ${finalPage}.`,
         payload: {
           bookId: targetBook?.id,
           bookTitle,
-          currentPage: page,
+          currentPage: finalPage,
         },
       },
     };
   }
 
-  // 4. AÇÃO: Contas & Finanças
+  // 4. AÇÃO: Contas & Finanças (extrai valor exato, sem valores aleatórios)
   if (lower.includes("pagar") || lower.includes("fatura") || lower.includes("reais") || lower.includes("r$") || lower.includes("boleto")) {
-    const amountMatch = text.match(/R\$\s*(\d+[.,]?\d*)/i) || text.match(/(\d+[.,]?\d*)\s*reais/i);
+    const extractedAmount = extractMonetaryValue(text);
     const dayMatch = text.match(/dia\s*(\d{1,2})/i);
     const isRecurring = lower.includes("todo dia") || lower.includes("mensal") || lower.includes("recorrente");
 
-    const amount = amountMatch ? parseFloat(amountMatch[1].replace(",", ".")) : 120.0;
-    const day = dayMatch ? parseInt(dayMatch[1], 10) : 10;
+    const day = dayMatch ? parseInt(dayMatch[1], 10) : now.getDate();
 
     let targetDate = setDate(now, day);
     if (isPast(targetDate)) {
@@ -184,18 +182,22 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
     else if (lower.includes("luz") || lower.includes("energia")) title = "Conta de Luz";
     else if (lower.includes("cartão") || lower.includes("cartao")) title = "Fatura do Cartão";
     else if (lower.includes("aluguel")) title = "Aluguel";
+    else if (lower.includes("academia")) title = "Mensalidade da Academia";
 
     const catFin = await prisma.category.findFirst({ where: { slug: "financas" } });
 
+    const valorText = extractedAmount ? ` no valor de **${formatCurrency(extractedAmount)}**` : "";
+    const summaryValorText = extractedAmount ? ` - ${formatCurrency(extractedAmount)}` : "";
+
     return {
-      reply: `Preparei o lembrete financeiro para **"${title}"** no valor de **${formatCurrency(amount)}** para o dia **${day}**${isRecurring ? " (Recorrente)" : ""}.\n\nConfirme o registro no cartão abaixo:`,
+      reply: `Preparei o lembrete financeiro para **"${title}"**${valorText} para o dia **${day}**${isRecurring ? " (Recorrente)" : ""}.\n\nConfirme o registro no cartão abaixo:`,
       action: {
         type: "REGISTER_FINANCE",
         title,
-        summary: `${title} - ${formatCurrency(amount)} (Vencimento: dia ${day}${isRecurring ? " - Recorrente" : ""})`,
+        summary: `${title}${summaryValorText} (Vencimento: dia ${day}${isRecurring ? " - Recorrente" : ""})`,
         payload: {
           title,
-          amount,
+          amount: extractedAmount ?? null,
           dueDate: targetDate.toISOString(),
           isRecurring,
           recurrenceRule: isRecurring ? "MONTHLY" : null,
@@ -206,11 +208,13 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
     };
   }
 
-  // 5. AÇÃO: Agendamento Inteligente de Tarefas com Título Limpo
+  // 5. AÇÃO: Agendamento Inteligente de Tarefas com Título Limpo e Valores Reais
   const {
     cleanTitle,
     description,
     extractedTime,
+    extractedAmount,
+    extractedClientName,
     suggestedCategorySlug,
     suggestedPriority,
   } = extractCleanTaskTitleAndDescription(text);
@@ -246,13 +250,14 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
   });
 
   const formattedDate = formatDate(targetDate);
+  const valorInfo = extractedAmount ? ` | Valor: ${formatCurrency(extractedAmount)}` : "";
 
   return {
-    reply: `Entendido! Agendei a tarefa **"${cleanTitle}"** (${category?.name || "Geral"}) para **${formattedDate}** às **${dueTime}**.\n\nConfirme a atividade no cartão abaixo:`,
+    reply: `Entendido! Agendei a tarefa **"${cleanTitle}"** (${category?.name || "Geral"}) para **${formattedDate}** às **${dueTime}**${extractedAmount ? ` no valor de **${formatCurrency(extractedAmount)}**` : ""}.\n\nConfirme a atividade no cartão abaixo:`,
     action: {
       type: "CREATE_TASK",
       title: cleanTitle,
-      summary: `${cleanTitle} (Data: ${formattedDate} às ${dueTime} | Categoria: ${category?.name || "Geral"})`,
+      summary: `${cleanTitle} (Data: ${formattedDate} às ${dueTime} | Categoria: ${category?.name || "Geral"}${valorInfo})`,
       payload: {
         title: cleanTitle,
         description: description || null,
@@ -261,6 +266,8 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
         priority: suggestedPriority,
         dueDate: targetDate.toISOString(),
         dueTime,
+        clientName: extractedClientName || null,
+        clientValue: extractedAmount ?? null,
       },
     },
   };

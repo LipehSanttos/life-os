@@ -82,6 +82,8 @@ export async function executeTool(name: string, args: any, userId?: string) {
           projectId: projectId || args.projectId,
           courseId: courseId || args.courseId,
           academicSubject: args.academicSubject,
+          clientName: args.clientName || sanitized.extractedClientName || null,
+          clientValue: args.clientValue != null ? parseFloat(args.clientValue) : (sanitized.extractedAmount ?? null),
         },
       });
 

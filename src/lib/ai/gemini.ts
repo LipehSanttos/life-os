@@ -1,7 +1,7 @@
 /**
  * @file gemini.ts
  * @description Módulo de integração com a Google Gemini API (modelos gemini-2.5-flash / gemini-2.0-flash / gemini-1.5-flash)
- * com fallback inteligente, injeção de contexto de dados isolados por usuário e higienização estrita de títulos.
+ * com fallback inteligente, fidelidade estrita aos valores monetários e numéricos informados na entrada.
  */
 
 import { GoogleGenerativeAI } from "@google/generative-ai";
@@ -10,7 +10,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { processFallbackNLP, NLPResult } from "./fallback-nlp";
 import { formatDate, formatCurrency } from "@/lib/utils";
-import { extractCleanTaskTitleAndDescription } from "./sanitizer";
+import { extractCleanTaskTitleAndDescription, extractMonetaryValue, extractPageNumber } from "./sanitizer";
 
 interface Message {
   role: "user" | "assistant" | "system";
@@ -35,7 +35,6 @@ export async function processAIChat(prompt: string, history: Message[] = [], use
     const todayStr = format(now, "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR });
     const timeStr = format(now, "HH:mm");
 
-    // Carrega o contexto em tempo real isolado por usuário
     const userFilter = userId ? { userId } : {};
 
     const [categories, projects, courses, books, finances, tasks] = await Promise.all([
@@ -86,56 +85,36 @@ ${financesContext}
 🏷️ CATEGORIAS DISPONÍVEIS NO SISTEMA: ${categories.map((c) => `${c.name} (${c.slug})`).join(", ")}.
 ------------------------------------------------------
 
-REGRAS CRÍTICAS E OBRIGATÓRIAS DE EXTRAÇÃO DE TÍTULO E AÇÃO:
+REGRAS CRÍTICAS E OBRIGATÓRIAS:
 
-1. O TÍTULO DA TAREFA DEVE SER LIMPO, DIRETO E CONCISO (2 A 5 PALAVRAS):
-   - NUNCA inclua saudações ("Oi", "Olá", "Bom dia", "Boa tarde", "Boa noite", "Por favor", "Por gentileza", "Pfv").
-   - NUNCA inclua pedidos de conversa ("Gostaria que agendasse", "Me lembre de", "Preciso que", "Favor marcar", "Cria uma tarefa de", "Anota aí").
-   - NUNCA coloque no título referências temporais ("amanhã", "terça-feira", "às 8h", "às 14h30", "de manhã").
-   - Exemplos obrigatórios de títulos perfeitos:
-     * Usuário: "Oi bom dia, gostaria que agendasse uma reunião com a equipe amanhã às 14h para alinhar metas"
-       -> Título: "Reunião com a Equipe"
-       -> Descrição: "Alinhar metas com a equipe"
-       -> Horário: "14:00"
-       -> Categoria: "Trabalho" ou "Freelance"
-     * Usuário: "Por favor me lembre de comprar ração pro cachorro no pet shop hoje às 18h"
-       -> Título: "Comprar Ração no Pet Shop"
-       -> Horário: "18:00"
-       -> Categoria: "Compras" ou "Saúde"
-     * Usuário: "Preciso levar o Rex ao veterinário na próxima terça-feira às 14h30 para tomar a vacina de raiva"
-       -> Título: "Levar o Rex ao Veterinário"
-       -> Descrição: "Vacina de raiva para o Rex"
-       -> Horário: "14:30"
-       -> Categoria: "Saúde"
-     * Usuário: "Gostaria de marcar entrega do trabalho de Banco de Dados na sexta às 23:59"
-       -> Título: "Entregar Trabalho de Banco de Dados"
-       -> Horário: "23:59"
-       -> Categoria: "Faculdade"
+1. REGRA ABSOLUTA SOBRE VALORES MONETÁRIOS E NUMÉRICOS:
+   - NUNCA invente, presuma ou gere valores aleatórios (R$), páginas ou quantidades que o usuário NÃO tenha digitado explicitamente!
+   - Se o usuário disse "Pagar conta de luz dia 10", o campo "amount" DEVE ser null (NUNCA coloque 120, 100 ou qualquer outro valor fictício).
+   - Se o usuário disse "Pagar a internet de R$ 149,90 dia 10", o campo "amount" deve ser exatamente 149.90.
+   - Se o usuário disse "Reunião com cliente João - projeto de 3500 reais", "clientName" deve ser "João" e "clientValue" deve ser 3500.0.
+   - Se o usuário disse "Li o livro até a página 45", "currentPage" deve ser 45. Se não informou a página, não invente números.
 
-2. CÁLCULO PRECISO DE DATAS E HORÁRIOS:
-   - "hoje" = data atual (${todayStr})
-   - "amanhã" = data de amanhã
-   - "segunda", "terça", "quarta", etc. = próximo dia da semana correspondente
-   - Calcule a data no formato ISO 8601 ("YYYY-MM-DDTHH:mm:ss.000Z") e o horário no formato "HH:mm".
+2. O TÍTULO DA TAREFA DEVE SER LIMPO E DIRETO (2 A 5 PALAVRAS):
+   - NUNCA inclua saudações ("Oi", "Olá", "Bom dia", "Boa tarde", "Boa noite", "Por favor", "Pfv").
+   - NUNCA inclua pedidos ("Gostaria que agendasse", "Me lembre de", "Preciso que", "Favor marcar").
+   - NUNCA inclua datas/horários ("amanhã", "terça", "às 8h", "às 14h30") nem valores monetários ("de 150 reais") no título da tarefa.
+   - Exemplos de títulos limpos:
+     * "Pagar a fatura do cartão de R$ 350 amanhã" -> Título: "Pagar Fatura do Cartão", Valor: 350.0
+     * "Me lembre de comprar pão amanhã às 8h" -> Título: "Comprar Pão", Horário: "08:00"
+     * "Levar o Rex ao veterinário na terça às 14:30" -> Título: "Levar o Rex ao Veterinário", Horário: "14:30"
 
-3. CLASSIFICAÇÃO DE CATEGORIA:
-   - Saúde, Médico, Dentista, Vacina, Remédio, Veterinário -> "Saúde"
-   - Faculdade, Prova, TCC, Disciplina, Estudo Universitário -> "Faculdade"
-   - Reunião, Cliente, Trabalho, Projeto, Freelance -> "Freelance" ou "Trabalho"
-   - Mercado, Compras, Padaria, Farmácia -> "Compras"
-   - Casa, Limpeza, Faxina, Manutenção -> "Casa"
-   - Contas, Fatura, Boleto, Dinheiro -> "Finanças"
+3. CÁLCULO PRECISO DE DATAS E HORÁRIOS (A PARTIR DE HOJE: ${todayStr}):
+   - Calcule a data ISO ("YYYY-MM-DDTHH:mm:ss.000Z") e o horário ("HH:mm").
 
 4. FORMATO DE EMISSÃO DA AÇÃO NO FINAL DA RESPOSTA:
-   - Responda cordialmente em português, confirmando a atividade.
-   - Emita no final da mensagem a tag no formato:
-   [ACTION:{"type":"CREATE_TASK","title":"Título Curto e Limpo","summary":"Título Curto e Limpo (Data: DD/MM/AAAA às HH:mm | Categoria: CategoriaEscolhida)","payload":{"title":"Título Curto e Limpo","description":"Detalhes se houver","categoryName":"Saúde|Faculdade|Trabalho|Freelance|Estudos|Compras|Casa|Finanças","priority":"HIGH|MEDIUM|LOW|URGENT","dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","dueTime":"HH:mm"}}]
+   - Para Tarefas:
+   [ACTION:{"type":"CREATE_TASK","title":"Título Limpo","summary":"Título Limpo (Data: DD/MM/AAAA às HH:mm | Categoria: Categoria)","payload":{"title":"Título Limpo","description":"Notas se houver","categoryName":"Saúde|Faculdade|Trabalho|Freelance|Estudos|Compras|Casa|Finanças","priority":"HIGH|MEDIUM|LOW|URGENT","dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","dueTime":"HH:mm","clientName":null,"clientValue":null}}]
 
-5. CASO SEJA CONTA / FINANÇAS:
-   [ACTION:{"type":"REGISTER_FINANCE","title":"Pagar Conta","summary":"Resumo financeiro","payload":{"title":"Nome da Conta","amount":120.0,"dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","isRecurring":true|false}}]
+   - Para Finanças / Contas (somente com valor se o usuário informou):
+   [ACTION:{"type":"REGISTER_FINANCE","title":"Nome da Conta","summary":"Resumo da Conta","payload":{"title":"Nome da Conta","amount":null,"dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","isRecurring":true|false}}]
 
-6. CASO SEJA LIVRO / LEITURA:
-   [ACTION:{"type":"UPDATE_BOOK","title":"Atualizar Leitura","summary":"Avanço de leitura","payload":{"bookTitle":"Nome do Livro","currentPage":87}}]`;
+   - Para Livros:
+   [ACTION:{"type":"UPDATE_BOOK","title":"Atualizar Leitura","summary":"Avanço de leitura","payload":{"bookTitle":"Nome do Livro","currentPage":null}}]`;
 
     const genAI = new GoogleGenerativeAI(apiKey);
     const candidateModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
@@ -185,12 +164,16 @@ REGRAS CRÍTICAS E OBRIGATÓRIAS DE EXTRAÇÃO DE TÍTULO E AÇÃO:
         actionData = JSON.parse(actionMatch[1]);
         cleanReply = rawText.replace(/\[ACTION:\{[\s\S]*?\}\]/g, "").trim();
 
-        // Higienização estrita garantida no backend
+        // Validação e higienização estrita de valores contra alucinação
+        const promptAmount = extractMonetaryValue(prompt);
+        const promptPages = extractPageNumber(prompt);
+
         if (actionData.type === "CREATE_TASK") {
           const rawTitle = actionData.payload?.title || actionData.title || prompt;
           const sanitized = extractCleanTaskTitleAndDescription(rawTitle);
           actionData.payload.title = sanitized.cleanTitle;
           actionData.title = sanitized.cleanTitle;
+
           if (sanitized.description && !actionData.payload.description) {
             actionData.payload.description = sanitized.description;
           }
@@ -198,7 +181,11 @@ REGRAS CRÍTICAS E OBRIGATÓRIAS DE EXTRAÇÃO DE TÍTULO E AÇÃO:
             actionData.payload.dueTime = sanitized.extractedTime;
           }
 
-          // Vincula a categoria correspondente do banco
+          // Atribuição fiel de valor monetário (nunca inventa se não estava no prompt)
+          actionData.payload.clientValue = promptAmount ?? sanitized.extractedAmount ?? null;
+          actionData.payload.clientName = sanitized.extractedClientName || actionData.payload.clientName || null;
+
+          // Vincula categoria
           const catName = actionData.payload.categoryName || sanitized.suggestedCategorySlug;
           const matchedCategory = categories.find(
             (c) =>
@@ -212,7 +199,17 @@ REGRAS CRÍTICAS E OBRIGATÓRIAS DE EXTRAÇÃO DE TÍTULO E AÇÃO:
             actionData.payload.categoryName = matchedCategory.name;
           }
 
-          actionData.summary = `${sanitized.cleanTitle} (Data: ${actionData.payload.dueDate ? formatDate(actionData.payload.dueDate) : "Amanhã"}${actionData.payload.dueTime ? ` às ${actionData.payload.dueTime}` : ""} | Categoria: ${actionData.payload.categoryName || "Geral"})`;
+          const valorInfo = actionData.payload.clientValue ? ` | Valor: ${formatCurrency(actionData.payload.clientValue)}` : "";
+          actionData.summary = `${sanitized.cleanTitle} (Data: ${actionData.payload.dueDate ? formatDate(actionData.payload.dueDate) : "Amanhã"}${actionData.payload.dueTime ? ` às ${actionData.payload.dueTime}` : ""} | Categoria: ${actionData.payload.categoryName || "Geral"}${valorInfo})`;
+        } else if (actionData.type === "REGISTER_FINANCE") {
+          // Garante que o valor venha exclusivamente da entrada do usuário
+          actionData.payload.amount = promptAmount ?? (typeof actionData.payload.amount === "number" && actionData.payload.amount > 0 ? actionData.payload.amount : null);
+          const valorTxt = actionData.payload.amount ? ` - ${formatCurrency(actionData.payload.amount)}` : "";
+          actionData.summary = `${actionData.payload.title || actionData.title}${valorTxt} (Vencimento: ${actionData.payload.dueDate ? formatDate(actionData.payload.dueDate) : "A definir"})`;
+        } else if (actionData.type === "UPDATE_BOOK") {
+          if (promptPages !== undefined) {
+            actionData.payload.currentPage = promptPages;
+          }
         }
       } catch (err) {
         console.error("Falha ao analisar JSON de ação do Gemini:", err);

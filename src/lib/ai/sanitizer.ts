@@ -2,8 +2,8 @@
  * @file sanitizer.ts
  * @description Módulo de higienização semântica e extração inteligente de ações para o Chat do Life OS.
  * Extrai estritamente o núcleo da tarefa solicitada pelo usuário (ex: "Comprar pão na padaria"),
- * removendo preâmbulos como "gostaria que agendasse", "me lembre de", "por favor", saudações,
- * referências temporais (datas, dias da semana, horários) e pontuações residuais.
+ * extraindo valores monetários reais, páginas de livros, nomes de clientes,
+ * removendo preâmbulos como "gostaria que agendasse", saudações e referências temporais.
  */
 
 export interface CleanTaskExtraction {
@@ -15,6 +15,12 @@ export interface CleanTaskExtraction {
   extractedTime?: string;
   /** Referência temporal identificada (ex: "amanhã", "terça-feira") */
   extractedDayOfWeek?: string;
+  /** Valor monetário explicitamente informado pelo usuário (ex: 150.0, 3500.0) ou undefined */
+  extractedAmount?: number;
+  /** Nome de cliente identificado para tarefas de trabalho/freelance */
+  extractedClientName?: string;
+  /** Número de páginas extraído para leituras */
+  extractedPages?: number;
   /** Sugestão de categoria semântica */
   suggestedCategorySlug?: string;
   /** Sugestão de prioridade ("LOW" | "MEDIUM" | "HIGH" | "URGENT") */
@@ -22,8 +28,71 @@ export interface CleanTaskExtraction {
 }
 
 /**
+ * Extrai valor monetário explicitamente informado pelo usuário.
+ * NUNCA retorna valores aleatórios ou defaults.
+ */
+export function extractMonetaryValue(text: string): number | undefined {
+  if (!text) return undefined;
+
+  // Casos: "R$ 1.500,50", "R$ 150", "150,00 reais", "2500 reais", "valor de R$ 300", "de 120 reais"
+  const regex =
+    /(?:R\$\s*|valor\s+de\s+R?\$?\s*|no\s+valor\s+de\s+R?\$?\s*)(\d{1,3}(?:\.\d{3})*|\d+)(?:,\s*(\d{2})|\.\s*(\d{2}))?|\b(\d{1,3}(?:\.\d{3})*|\d+)(?:,\s*(\d{2})|\.\s*(\d{2}))?\s*(?:reais|real)\b/i;
+
+  const match = text.match(regex);
+  if (match) {
+    let intPart = match[1] || match[4] || "";
+    let centPart = match[2] || match[3] || match[5] || match[6] || "";
+
+    intPart = intPart.replace(/\./g, "").replace(/,/g, ".");
+    let parsed = parseFloat(intPart);
+    if (centPart && !intPart.includes(".")) {
+      parsed += parseFloat(centPart) / 100;
+    }
+
+    if (!isNaN(parsed) && parsed > 0) {
+      return parsed;
+    }
+  }
+
+  return undefined;
+}
+
+/**
+ * Extrai número de páginas explicitamente informado pelo usuário.
+ */
+export function extractPageNumber(text: string): number | undefined {
+  if (!text) return undefined;
+  const match =
+    text.match(/\bp[áa]gina\s*(\d+)\b/i) ||
+    text.match(/\b(\d+)\s*p[áa]g(?:inas?)?\b/i) ||
+    text.match(/\bli\s*(\d+)\s*p[áa]g/i);
+
+  if (match) {
+    const p = parseInt(match[1], 10);
+    if (!isNaN(p) && p > 0) return p;
+  }
+  return undefined;
+}
+
+/**
+ * Extrai nome do cliente em tarefas de trabalho ou freelance.
+ */
+export function extractClientName(text: string): string | undefined {
+  if (!text) return undefined;
+  const match =
+    text.match(/(?:cliente|com\s+o\s+cliente|para\s+o\s+cliente)\s+([A-ZÀ-Ú][a-zà-ú]+(?:\s+[A-ZÀ-Ú][a-zà-ú]+)?)/i) ||
+    text.match(/(?:reunião\s+com|projeto\s+do|projeto\s+da)\s+([A-ZÀ-Ú][a-zà-ú]+)/i);
+
+  if (match && match[1]) {
+    return match[1].trim();
+  }
+  return undefined;
+}
+
+/**
  * Higieniza qualquer texto enviado pelo usuário ou retornado pela IA,
- * garantindo que o título contenha exclusivamente a ação essencial.
+ * garantindo que o título contenha exclusivamente a ação essencial
+ * e extraindo fielmente os valores informados na entrada.
  */
 export function extractCleanTaskTitleAndDescription(rawText: string): CleanTaskExtraction {
   if (!rawText || !rawText.trim()) {
@@ -36,6 +105,10 @@ export function extractCleanTaskTitleAndDescription(rawText: string): CleanTaskE
   let extractedDayOfWeek: string | undefined;
   let suggestedCategorySlug = "outros";
   let suggestedPriority: "LOW" | "MEDIUM" | "HIGH" | "URGENT" = "MEDIUM";
+
+  const extractedAmount = extractMonetaryValue(text);
+  const extractedPages = extractPageNumber(text);
+  const extractedClientName = extractClientName(text);
 
   const lower = text.toLowerCase();
 
@@ -200,7 +273,13 @@ export function extractCleanTaskTitleAndDescription(rawText: string): CleanTaskE
     }
   }
 
-  // 7. Remoção de datas, dias e horários do título
+  // 7. Remoção de menções explícitas de valores monetários do título da tarefa
+  primaryAction = primaryAction
+    .replace(/(?:R\$\s*|valor\s+de\s+R?\$?\s*|no\s+valor\s+de\s+R?\$?\s*)(\d{1,3}(?:\.\d{3})*|\d+)(?:,\s*(\d{2})|\.\s*(\d{2}))?/gi, "")
+    .replace(/\b(\d{1,3}(?:\.\d{3})*|\d+)(?:,\s*(\d{2})|\.\s*(\d{2}))?\s*(?:reais|real)\b/gi, "")
+    .replace(/(?:no\s+valor\s+de|valor\s+de|de\s+R\$|de\s+\d+)/gi, "");
+
+  // 8. Remoção de datas, dias e horários do título
   primaryAction = primaryAction
     .replace(
       /(?:na\s+próxima|no\s+próximo|na\s+proxima|no\s+proximo|nesta|neste|nessa|nesse|da\s+próxima|do\s+próximo)?\s*(?:segunda(?:-feira)?|terça(?:-feira)?|terca(?:-feira)?|quarta(?:-feira)?|quinta(?:-feira)?|sexta(?:-feira)?|sábado|sabado|domingo|semana\s+que\s+vem|próxima\s+semana|proxima\s+semana|depois\s+de\s+amanhã|depois\s+de\s+amanha|amanhã|amanha|hoje)/gi,
@@ -216,24 +295,24 @@ export function extractCleanTaskTitleAndDescription(rawText: string): CleanTaskE
     .replace(/\b\d{1,2}\s*horas\b/gi, "")
     .replace(/(?:no\s+dia|dia)\s*\d{1,2}(?:\s*de\s*[a-zç]+)?/gi, "");
 
-  // 8. Limpeza de pontuação e espaços múltiplos
+  // 9. Limpeza de pontuação e espaços múltiplos
   primaryAction = primaryAction
     .replace(/[,\-–—:\.]+/g, " ")
     .replace(/\s+/g, " ")
     .trim();
 
-  // 9. Remoção de preposições ou artigos residuais soltos no início ou no fim
+  // 10. Remoção de preposições ou artigos residuais soltos no início ou no fim
   primaryAction = primaryAction
     .replace(/^(?:uma|um|o|a|os|as|de|da|do|em|na|no|para|pra)\s+/i, "")
-    .replace(/\s+(?:na|no|em|de|da|do|para|pra|às|as|a|o|com)$/i, "")
+    .replace(/\s+(?:na|no|em|de|da|do|para|pra|às|as|a|o|com|de\s+R\$)$/i, "")
     .trim();
 
-  // 10. Se sobrou preâmbulo residual no início, remove novamente
+  // 11. Se sobrou preâmbulo residual no início, remove novamente
   for (const pattern of preamblePatterns) {
     primaryAction = primaryAction.replace(pattern, "").trim();
   }
 
-  // 11. Capitalização limpa da ação
+  // 12. Capitalização limpa da ação
   if (primaryAction.length > 0) {
     primaryAction = primaryAction.charAt(0).toUpperCase() + primaryAction.slice(1);
   } else {
@@ -248,6 +327,9 @@ export function extractCleanTaskTitleAndDescription(rawText: string): CleanTaskE
     description,
     extractedTime,
     extractedDayOfWeek,
+    extractedAmount,
+    extractedClientName,
+    extractedPages,
     suggestedCategorySlug,
     suggestedPriority,
   };

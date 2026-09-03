@@ -100,10 +100,16 @@ export function ActionConfirmationCard({ messageId, action, onActionHandled }: A
               </span>
             </div>
           )}
-          {action.payload.amount !== undefined && (
+          {action.payload.amount != null && Number(action.payload.amount) > 0 && (
             <div className="flex items-center gap-2 text-emerald-400 font-bold">
               <DollarSign className="w-4 h-4" />
               <span>Valor: {formatCurrency(action.payload.amount)}</span>
+            </div>
+          )}
+          {action.payload.clientValue != null && Number(action.payload.clientValue) > 0 && (
+            <div className="flex items-center gap-2 text-emerald-400 font-bold">
+              <DollarSign className="w-4 h-4" />
+              <span>Valor do Projeto: {formatCurrency(action.payload.clientValue)}</span>
             </div>
           )}
         </div>
