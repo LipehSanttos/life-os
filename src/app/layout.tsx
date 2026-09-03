@@ -21,9 +21,16 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" suppressHydrationWarning>
+    <html lang="pt-BR" className="dark" suppressHydrationWarning>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: "window.__name=window.__name||function(t,v){try{Object.defineProperty(t,'name',{value:v,configurable:true})}catch(e){}return t};",
+          }}
+        />
+      </head>
       <body className={`${inter.className} antialiased selection:bg-primary/20 selection:text-primary`}>
-        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
+        <ThemeProvider defaultTheme="dark">
           <ToastProvider />
           <AppShell>{children}</AppShell>
         </ThemeProvider>

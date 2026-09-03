@@ -12,7 +12,7 @@ import { prisma } from "@/lib/db";
 function getAuthSecret(): string {
   const secret = process.env.AUTH_SECRET;
   if (!secret || secret.length < 16) {
-    return "lifeos_super_secure_jwt_token_auth_secret_2026_railway";
+    return "lifeos_super_secure_jwt_token_auth_secret_2026_supabase";
   }
   return secret;
 }

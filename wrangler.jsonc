@@ -9,6 +9,7 @@
   "assets": {
     "directory": ".open-next/assets",
     "binding": "ASSETS"
-  }
+  },
+  "keep_names": false
 }
 
