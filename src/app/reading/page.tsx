@@ -39,6 +39,7 @@ export default function ReadingPage() {
   const [loading, setLoading] = useState(false);
   const [searchingIsbn, setSearchingIsbn] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [manualPages, setManualPages] = useState<Record<string, string>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editFileInputRef = useRef<HTMLInputElement>(null);
@@ -241,6 +242,18 @@ export default function ReadingPage() {
     }
   };
 
+  const handleManualAdd = (book: BookData) => {
+    const rawVal = manualPages[book.id];
+    if (!rawVal) return;
+    const count = parseInt(rawVal, 10);
+    if (isNaN(count) || count <= 0) {
+      toast.error("Informe uma quantidade válida de páginas.");
+      return;
+    }
+    handleAddPages(book, count);
+    setManualPages((prev) => ({ ...prev, [book.id]: "" }));
+  };
+
   const openEditModal = (book: BookData) => {
     setSelectedBook(book);
     setTitle(book.title);
@@ -409,22 +422,49 @@ export default function ReadingPage() {
                     />
                   </div>
 
-                  {/* Quick Action Buttons */}
-                  <div className="flex gap-2 pt-1">
+                  {/* Quick Action Buttons & Manual Input */}
+                  <div className="flex items-center gap-2 pt-1">
                     <button
-                      onClick={() => handleAddPages(book, 5)}
+                      type="button"
+                      onClick={() => handleAddPages(book, 1)}
                       disabled={isCompleted}
-                      className="flex-1 py-2 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-xs font-bold transition-all disabled:opacity-40"
+                      className="px-3.5 py-2 rounded-xl bg-muted hover:bg-muted/80 text-foreground text-xs font-bold transition-all disabled:opacity-40 shrink-0 shadow-xs active:scale-95"
+                      title="Adicionar +1 página lida"
                     >
-                      +5 págs
+                      +1 pág
                     </button>
-                    <button
-                      onClick={() => handleAddPages(book, 20)}
-                      disabled={isCompleted}
-                      className="flex-1 py-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 text-xs font-bold transition-all disabled:opacity-40"
+
+                    <form
+                      onSubmit={(e) => {
+                        e.preventDefault();
+                        handleManualAdd(book);
+                      }}
+                      className="flex-1 flex items-center gap-1"
                     >
-                      +20 págs
-                    </button>
+                      <input
+                        type="number"
+                        min="1"
+                        max={book.totalPages - book.currentPage}
+                        value={manualPages[book.id] || ""}
+                        onChange={(e) =>
+                          setManualPages((prev) => ({
+                            ...prev,
+                            [book.id]: e.target.value,
+                          }))
+                        }
+                        placeholder="+ págs lidas"
+                        disabled={isCompleted}
+                        className="w-full px-3 py-2 rounded-xl border border-border/70 bg-background text-foreground text-xs font-medium outline-none focus:ring-2 focus:ring-amber-500/40 placeholder:text-muted-foreground/60 transition-all disabled:opacity-40"
+                      />
+                      <button
+                        type="submit"
+                        disabled={isCompleted || !manualPages[book.id]}
+                        className="p-2 rounded-xl bg-amber-500/15 hover:bg-amber-500/25 text-amber-500 text-xs font-bold transition-all disabled:opacity-40 shrink-0"
+                        title="Adicionar páginas lidas"
+                      >
+                        +
+                      </button>
+                    </form>
                   </div>
                 </div>
               </div>
