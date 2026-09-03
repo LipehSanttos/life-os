@@ -132,6 +132,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "O título da tarefa é obrigatório." }, { status: 400 });
     }
 
+    // 1. Cria a tarefa no banco de dados
     const task = await prisma.task.create({
       data: {
         userId: user.id,
@@ -157,26 +158,46 @@ export async function POST(req: NextRequest) {
         clientValue: clientValue ? parseFloat(clientValue) : null,
         academicSubject: academicSubject || null,
         isInbox: Boolean(isInbox),
-        subtasks: {
-          create: Array.isArray(subtasks)
-            ? subtasks.map((st: any, idx: number) => ({
-                title: st.title,
-                isCompleted: Boolean(st.isCompleted),
-                sortOrder: idx + 1,
-              }))
-            : [],
-        },
       },
       include: {
         category: true,
         project: true,
         course: true,
-        subtasks: true,
+        book: true,
+        financialReminder: true,
       },
     });
 
-    return NextResponse.json(task, { status: 201 });
+    // 2. Se houver subtarefas, insere na tabela Subtask
+    let createdSubtasks: any[] = [];
+    if (Array.isArray(subtasks) && subtasks.length > 0 && task?.id) {
+      const subtaskItems = subtasks
+        .filter((st: any) => st && st.title && st.title.trim() !== "")
+        .map((st: any, idx: number) => ({
+          taskId: task.id,
+          title: st.title.trim(),
+          isCompleted: Boolean(st.isCompleted),
+          sortOrder: idx + 1,
+        }));
+
+      if (subtaskItems.length > 0) {
+        await prisma.subtask.createMany({ data: subtaskItems }).catch(() => null);
+        createdSubtasks = await prisma.subtask.findMany({
+          where: { taskId: task.id },
+          orderBy: { sortOrder: "asc" },
+        }).catch(() => []);
+      }
+    }
+
+    return NextResponse.json(
+      {
+        ...task,
+        subtasks: createdSubtasks,
+      },
+      { status: 201 }
+    );
   } catch (error: any) {
+    console.error("[tasks/POST] Erro ao cadastrar tarefa:", error.message || error);
     return NextResponse.json({ error: error.message || "Erro ao criar tarefa." }, { status: 500 });
   }
 }

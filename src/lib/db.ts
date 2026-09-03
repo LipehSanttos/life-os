@@ -175,6 +175,37 @@ const tablesWithUpdatedAt = new Set([
   "ChatSession",
 ]);
 
+const relationalFields = new Set([
+  "subtasks",
+  "tasks",
+  "category",
+  "project",
+  "course",
+  "book",
+  "financialReminder",
+  "messages",
+  "user",
+  "session",
+  "activityLogs",
+  "_count",
+]);
+
+function cleanDataForTable(data: Record<string, any>): Record<string, any> {
+  if (!data || typeof data !== "object") return {};
+  const cleaned: Record<string, any> = {};
+  for (const [key, value] of Object.entries(data)) {
+    if (value === undefined) continue;
+    if (relationalFields.has(key)) continue;
+    if (typeof value === "object" && value !== null && !(value instanceof Date) && !Array.isArray(value)) {
+      if ("create" in value || "connect" in value || "disconnect" in value || "set" in value) {
+        continue;
+      }
+    }
+    cleaned[key] = value;
+  }
+  return cleaned;
+}
+
 function createTableClient(tableName: string): TableClient {
   return {
     async findMany(args: {
@@ -250,9 +281,10 @@ function createTableClient(tableName: string): TableClient {
     },
 
     async create(args: { data: Record<string, any>; select?: any; include?: any }): Promise<any> {
+      const sanitized = cleanDataForTable(args.data);
       const payload: Record<string, any> = {
-        ...args.data,
-        id: args.data.id || crypto.randomUUID(),
+        ...sanitized,
+        id: sanitized.id || crypto.randomUUID(),
       };
 
       if (tablesWithUpdatedAt.has(tableName)) {
@@ -273,9 +305,10 @@ function createTableClient(tableName: string): TableClient {
 
     async createMany(args: { data: Record<string, any>[] }): Promise<{ count: number }> {
       const payload = args.data.map((item) => {
+        const sanitized = cleanDataForTable(item);
         const itemPayload: Record<string, any> = {
-          ...item,
-          id: item.id || crypto.randomUUID(),
+          ...sanitized,
+          id: sanitized.id || crypto.randomUUID(),
         };
         if (tablesWithUpdatedAt.has(tableName)) {
           itemPayload.updatedAt = new Date().toISOString();
@@ -289,8 +322,9 @@ function createTableClient(tableName: string): TableClient {
     },
 
     async update(args: { where: Record<string, any>; data: Record<string, any>; select?: any; include?: any }): Promise<any> {
+      const sanitized = cleanDataForTable(args.data);
       const updatePayload: Record<string, any> = {
-        ...args.data,
+        ...sanitized,
       };
 
       if (tablesWithUpdatedAt.has(tableName)) {
@@ -308,8 +342,9 @@ function createTableClient(tableName: string): TableClient {
     },
 
     async updateMany(args: { where: Record<string, any>; data: Record<string, any> }): Promise<{ count: number }> {
+      const sanitized = cleanDataForTable(args.data);
       const updatePayload: Record<string, any> = {
-        ...args.data,
+        ...sanitized,
       };
 
       if (tablesWithUpdatedAt.has(tableName)) {

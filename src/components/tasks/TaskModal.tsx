@@ -45,7 +45,7 @@ export function TaskModal({
       ]).then(([cats, projs, studies]) => {
         setCategories(cats || []);
         setProjects(projs || []);
-        setCourses(studies?.courses || []);
+        setCourses(Array.isArray(studies) ? studies : (studies?.courses || []));
       });
 
       if (taskToEdit) {
