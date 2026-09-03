@@ -27,8 +27,8 @@ export async function executeTool(name: string, args: any, userId?: string) {
       const finalTitle = sanitized.cleanTitle;
       const finalDescription = args.description || sanitized.description || null;
 
-      let categoryId: string | undefined;
-      if (args.categoryName) {
+      let categoryId: string | undefined = args.categoryId;
+      if (!categoryId && args.categoryName) {
         const cat = await prisma.category.findFirst({
           where: {
             OR: [
@@ -36,6 +36,12 @@ export async function executeTool(name: string, args: any, userId?: string) {
               { slug: { contains: args.categoryName.toLowerCase() } },
             ],
           },
+        });
+        if (cat) categoryId = cat.id;
+      }
+      if (!categoryId && sanitized.suggestedCategorySlug) {
+        const cat = await prisma.category.findFirst({
+          where: { slug: sanitized.suggestedCategorySlug },
         });
         if (cat) categoryId = cat.id;
       }

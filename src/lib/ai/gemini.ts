@@ -1,6 +1,6 @@
 /**
  * @file gemini.ts
- * @description Módulo de integração com a Google Gemini API (modelos gemini-3.6-flash / 3.5-flash)
+ * @description Módulo de integração com a Google Gemini API (modelos gemini-2.5-flash / gemini-2.0-flash / gemini-1.5-flash)
  * com fallback inteligente, injeção de contexto de dados isolados por usuário e higienização estrita de títulos.
  */
 
@@ -83,54 +83,62 @@ ${booksContext}
 💰 CONTAS E FINANÇAS:
 ${financesContext}
 
-🏷️ CATEGORIAS DISPONÍVEIS: ${categories.map((c) => c.name).join(", ")}.
+🏷️ CATEGORIAS DISPONÍVEIS NO SISTEMA: ${categories.map((c) => `${c.name} (${c.slug})`).join(", ")}.
 ------------------------------------------------------
 
-REGRAS CRÍTICAS E OBRIGATÓRIAS DE EXTRAÇÃO DE TÍTULO:
+REGRAS CRÍTICAS E OBRIGATÓRIAS DE EXTRAÇÃO DE TÍTULO E AÇÃO:
 
-1. O TÍTULO DA TAREFA DEVE CONTER EXCLUSIVAMENTE O NOME DA AÇÃO (MÁXIMO 2 A 5 PALAVRAS):
-   - NUNCA use a frase inteira do usuário nem preâmbulos de conversação!
-   - NUNCA coloque no título termos como "Gostaria que agendasse", "Me lembre de", "Por favor", "Preciso", datas ("amanhã", "terça") ou horários ("às 8h", "às 14h30").
-   - Exemplos obrigatórios de títulos corretos:
-     * Comando: "Me lembre de comprar pão amanhã, as 8h."
-       -> Título: "Comprar pão"
-       -> Horário: "08:00"
-     * Comando: "Gostaria que agendasse uma reunião com o time amanhã às 10h"
-       -> Título: "Reunião com o Time"
-       -> Horário: "10:00"
-     * Comando: "Preciso levar o Rex ao veterinário na próxima terça-feira às 14h30 para tomar a vacina de raiva"
+1. O TÍTULO DA TAREFA DEVE SER LIMPO, DIRETO E CONCISO (2 A 5 PALAVRAS):
+   - NUNCA inclua saudações ("Oi", "Olá", "Bom dia", "Boa tarde", "Boa noite", "Por favor", "Por gentileza", "Pfv").
+   - NUNCA inclua pedidos de conversa ("Gostaria que agendasse", "Me lembre de", "Preciso que", "Favor marcar", "Cria uma tarefa de", "Anota aí").
+   - NUNCA coloque no título referências temporais ("amanhã", "terça-feira", "às 8h", "às 14h30", "de manhã").
+   - Exemplos obrigatórios de títulos perfeitos:
+     * Usuário: "Oi bom dia, gostaria que agendasse uma reunião com a equipe amanhã às 14h para alinhar metas"
+       -> Título: "Reunião com a Equipe"
+       -> Descrição: "Alinhar metas com a equipe"
+       -> Horário: "14:00"
+       -> Categoria: "Trabalho" ou "Freelance"
+     * Usuário: "Por favor me lembre de comprar ração pro cachorro no pet shop hoje às 18h"
+       -> Título: "Comprar Ração no Pet Shop"
+       -> Horário: "18:00"
+       -> Categoria: "Compras" ou "Saúde"
+     * Usuário: "Preciso levar o Rex ao veterinário na próxima terça-feira às 14h30 para tomar a vacina de raiva"
        -> Título: "Levar o Rex ao Veterinário"
        -> Descrição: "Vacina de raiva para o Rex"
        -> Horário: "14:30"
-     * Comando: "Gostaria que você marcasse entrega do trabalho de Banco de Dados na sexta às 23:59"
+       -> Categoria: "Saúde"
+     * Usuário: "Gostaria de marcar entrega do trabalho de Banco de Dados na sexta às 23:59"
        -> Título: "Entregar Trabalho de Banco de Dados"
        -> Horário: "23:59"
+       -> Categoria: "Faculdade"
 
-2. CÁLCULO PRECISO DE DATA E HORÁRIO (A PARTIR DE HOJE: ${todayStr}):
-   - Calcule a data ISO exata no formato ISO 8601 ("YYYY-MM-DDTHH:mm:ss.000Z").
-   - Extraia o horário específico no formato "HH:mm" (ex: "08:00", "14:30", "09:00", "23:59").
+2. CÁLCULO PRECISO DE DATAS E HORÁRIOS:
+   - "hoje" = data atual (${todayStr})
+   - "amanhã" = data de amanhã
+   - "segunda", "terça", "quarta", etc. = próximo dia da semana correspondente
+   - Calcule a data no formato ISO 8601 ("YYYY-MM-DDTHH:mm:ss.000Z") e o horário no formato "HH:mm".
 
-3. CLASSIFICAÇÃO AUTOMÁTICA DE CATEGORIA E PRIORIDADE:
-   - Veterinário / Médico / Dentista / Saúde / Remédio -> Categoria: "Saúde", Prioridade: "HIGH"
-   - Faculdade / Prova / TCC / Trabalho Acadêmico -> Categoria: "Faculdade", Prioridade: "HIGH"
-   - Reunião / Cliente / Freelancer -> Categoria: "Freelance", Prioridade: "HIGH"
-   - Mercado / Compras -> Categoria: "Compras"
-   - Casa / Faxina -> Categoria: "Casa"
-   - Contas / Boletos -> Categoria: "Finanças"
+3. CLASSIFICAÇÃO DE CATEGORIA:
+   - Saúde, Médico, Dentista, Vacina, Remédio, Veterinário -> "Saúde"
+   - Faculdade, Prova, TCC, Disciplina, Estudo Universitário -> "Faculdade"
+   - Reunião, Cliente, Trabalho, Projeto, Freelance -> "Freelance" ou "Trabalho"
+   - Mercado, Compras, Padaria, Farmácia -> "Compras"
+   - Casa, Limpeza, Faxina, Manutenção -> "Casa"
+   - Contas, Fatura, Boleto, Dinheiro -> "Finanças"
 
-4. FORMATO DE EMISSÃO DA AÇÃO NO FINAL DA MENSAGEM:
-   - No texto da resposta, confirme com gentileza a atividade, o título limpo e o horário.
-   - Emita no final da mensagem o bloco no formato exato:
-   [ACTION:{"type":"CREATE_TASK","title":"Título Curto e Limpo","summary":"Título Curto e Limpo (Data: DD/MM/AAAA às HH:mm)","payload":{"title":"Título Curto e Limpo","description":"Notas e detalhes","categoryName":"Saúde|Faculdade|Trabalho|Freelance|Estudos|Compras|Casa|Finanças","priority":"HIGH|MEDIUM|LOW|URGENT","dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","dueTime":"HH:mm"}}]
+4. FORMATO DE EMISSÃO DA AÇÃO NO FINAL DA RESPOSTA:
+   - Responda cordialmente em português, confirmando a atividade.
+   - Emita no final da mensagem a tag no formato:
+   [ACTION:{"type":"CREATE_TASK","title":"Título Curto e Limpo","summary":"Título Curto e Limpo (Data: DD/MM/AAAA às HH:mm | Categoria: CategoriaEscolhida)","payload":{"title":"Título Curto e Limpo","description":"Detalhes se houver","categoryName":"Saúde|Faculdade|Trabalho|Freelance|Estudos|Compras|Casa|Finanças","priority":"HIGH|MEDIUM|LOW|URGENT","dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","dueTime":"HH:mm"}}]
 
 5. CASO SEJA CONTA / FINANÇAS:
    [ACTION:{"type":"REGISTER_FINANCE","title":"Pagar Conta","summary":"Resumo financeiro","payload":{"title":"Nome da Conta","amount":120.0,"dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","isRecurring":true|false}}]
 
-6. CASO SEJA LIVRO:
+6. CASO SEJA LIVRO / LEITURA:
    [ACTION:{"type":"UPDATE_BOOK","title":"Atualizar Leitura","summary":"Avanço de leitura","payload":{"bookTitle":"Nome do Livro","currentPage":87}}]`;
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const candidateModels = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.1-flash-lite", "gemini-2.5-flash-lite"];
+    const candidateModels = ["gemini-2.5-flash", "gemini-2.0-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
     let rawText = "";
 
     for (const modelName of candidateModels) {
@@ -189,7 +197,22 @@ REGRAS CRÍTICAS E OBRIGATÓRIAS DE EXTRAÇÃO DE TÍTULO:
           if (sanitized.extractedTime && !actionData.payload.dueTime) {
             actionData.payload.dueTime = sanitized.extractedTime;
           }
-          actionData.summary = `${sanitized.cleanTitle} (Data: ${actionData.payload.dueDate ? formatDate(actionData.payload.dueDate) : "Amanhã"}${actionData.payload.dueTime ? ` às ${actionData.payload.dueTime}` : ""})`;
+
+          // Vincula a categoria correspondente do banco
+          const catName = actionData.payload.categoryName || sanitized.suggestedCategorySlug;
+          const matchedCategory = categories.find(
+            (c) =>
+              c.name.toLowerCase() === catName?.toLowerCase() ||
+              c.slug.toLowerCase() === catName?.toLowerCase() ||
+              c.slug.toLowerCase() === sanitized.suggestedCategorySlug
+          );
+
+          if (matchedCategory) {
+            actionData.payload.categoryId = matchedCategory.id;
+            actionData.payload.categoryName = matchedCategory.name;
+          }
+
+          actionData.summary = `${sanitized.cleanTitle} (Data: ${actionData.payload.dueDate ? formatDate(actionData.payload.dueDate) : "Amanhã"}${actionData.payload.dueTime ? ` às ${actionData.payload.dueTime}` : ""} | Categoria: ${actionData.payload.categoryName || "Geral"})`;
         }
       } catch (err) {
         console.error("Falha ao analisar JSON de ação do Gemini:", err);
