@@ -1,8 +1,8 @@
 /**
  * @file groq.ts
  * @description Módulo de integração com a API da Groq (LPUs ultra-rápidas)
- * utilizando modelos LLaMA 3.3 70B Versatile, LLaMA 3.1 8B Instant e Mixtral 8x7B.
- * Realiza interpretação semântica profunda e fidelidade estrita aos valores digitados (sem valores inventados).
+ * utilizando o modelo "openai/gpt-oss-120b" (com fallback para LLaMA 3.3 70B e 3.1 8B),
+ * streaming com for-await-of e fidelidade estrita aos valores digitados pelo usuário.
  */
 
 import { Groq } from "groq-sdk";
@@ -28,10 +28,11 @@ export async function processGroqChat(
     where: { id: "user_default" },
   });
 
+  // Busca a chave da API na variável de ambiente GROQ_API_KEY (ou nas configurações do usuário)
   const apiKey = process.env.GROQ_API_KEY || userSettings?.groqApiKey;
 
   if (!apiKey || apiKey.trim() === "") {
-    throw new Error("GROQ_API_KEY não configurada.");
+    throw new Error("GROQ_API_KEY não configurada no ambiente.");
   }
 
   const groq = new Groq({ apiKey });
@@ -68,7 +69,7 @@ export async function processGroqChat(
   const booksContext = books.map((b) => `- ${b.title} (${b.author || "Autor não informado"}): Página ${b.currentPage}/${b.totalPages} (${b.progress}%)`).join("\n") || "Nenhum livro em leitura.";
   const financesContext = finances.map((f) => `- ${f.title}: ${formatCurrency(f.amount)} (Vencimento: ${format(new Date(f.dueDate), "dd/MM/yyyy")}, Status: ${f.status})`).join("\n") || "Nenhuma conta registrada.";
 
-  const systemPrompt = `Você é o Assistente Pessoal de Inteligência Artificial do Life OS de ${userName}, potencializado pelos modelos da Groq (LLaMA 3.3).
+  const systemPrompt = `Você é o Assistente Pessoal de Inteligência Artificial do Life OS de ${userName}, potencializado pela Groq.
 Hoje é ${todayStr}, horário atual: ${timeStr} (Horário de Brasília / UTC-3).
 
 --- CONTEXTO ATUAL DO USUÁRIO NO LIFE OS ---
@@ -118,6 +119,7 @@ REGRAS CRÍTICAS E OBRIGATÓRIAS:
    [ACTION:{"type":"UPDATE_BOOK","title":"Atualizar Leitura","summary":"Avanço de leitura","payload":{"bookTitle":"Nome do Livro","currentPage":null}}]`;
 
   const candidateModels = [
+    "openai/gpt-oss-120b",
     "llama-3.3-70b-versatile",
     "llama-3.1-8b-instant",
     "mixtral-8x7b-32768",
@@ -125,30 +127,40 @@ REGRAS CRÍTICAS E OBRIGATÓRIAS:
 
   let rawText = "";
 
+  const messagesPayload: any[] = [
+    { role: "system", content: systemPrompt },
+    ...history.slice(-8).map((h) => ({
+      role: h.role === "assistant" ? "assistant" : "user",
+      content: h.content,
+    })),
+    { role: "user", content: prompt },
+  ];
+
   for (const modelName of candidateModels) {
     try {
-      const messagesPayload: any[] = [
-        { role: "system", content: systemPrompt },
-        ...history.slice(-8).map((h) => ({
-          role: h.role === "assistant" ? "assistant" : "user",
-          content: h.content,
-        })),
-        { role: "user", content: prompt },
-      ];
-
-      const completion = await groq.chat.completions.create({
-        model: modelName,
+      const chatCompletion: any = await groq.chat.completions.create({
         messages: messagesPayload,
-        temperature: 0.1,
-        max_tokens: 1024,
+        model: modelName,
+        temperature: 1,
+        max_completion_tokens: 2048,
+        top_p: 1,
+        stream: true,
+        reasoning_effort: "medium",
+        stop: null,
       });
 
-      rawText = completion.choices[0]?.message?.content || "";
-      if (rawText && rawText.trim() !== "") {
+      let modelResponse = "";
+      for await (const chunk of chatCompletion) {
+        const delta = chunk.choices[0]?.delta?.content || "";
+        modelResponse += delta;
+      }
+
+      if (modelResponse && modelResponse.trim() !== "") {
+        rawText = modelResponse;
         break;
       }
     } catch (err: any) {
-      console.warn(`Groq model ${modelName} call failed:`, err.message || err);
+      console.warn(`Groq model ${modelName} streaming call failed:`, err.message || err);
     }
   }
 
