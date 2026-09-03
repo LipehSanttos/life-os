@@ -245,6 +245,45 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
     targetDate = nextSunday(now);
   }
 
+  // Parsing de datas explícitas com mês (ex: "dia 15 de outubro", "12/10", "25 de maio")
+  const monthNames: Record<string, number> = {
+    janeiro: 0, jan: 0,
+    fevereiro: 1, fev: 1,
+    março: 2, marco: 2, mar: 2,
+    abril: 3, abr: 3,
+    maio: 4, mai: 4,
+    junho: 5, jun: 5,
+    julho: 6, jul: 6,
+    agosto: 7, ago: 7,
+    setembro: 8, set: 8,
+    outubro: 9, out: 9,
+    novembro: 10, nov: 10,
+    dezembro: 11, dez: 11,
+  };
+
+  const monthDateMatch = text.match(/(?:dia|no\s+dia|em)?\s*(\d{1,2})\s*(?:de|\/)\s*([a-zç]+|\d{1,2})/i);
+  if (monthDateMatch) {
+    const day = parseInt(monthDateMatch[1], 10);
+    const monthRaw = monthDateMatch[2].toLowerCase();
+    let monthIndex = -1;
+    if (monthNames[monthRaw] !== undefined) {
+      monthIndex = monthNames[monthRaw];
+    } else if (!isNaN(parseInt(monthRaw, 10))) {
+      monthIndex = parseInt(monthRaw, 10) - 1;
+    }
+
+    if (monthIndex >= 0 && monthIndex <= 11 && day >= 1 && day <= 31) {
+      targetDate = new Date(now.getFullYear(), monthIndex, day, 0, 0, 0);
+      if (isPast(targetDate) && suggestedCategorySlug === "aniversarios") {
+        targetDate = new Date(now.getFullYear() + 1, monthIndex, day, 0, 0, 0);
+      }
+    }
+  }
+
+  const isBirthday = suggestedCategorySlug === "aniversarios";
+  const isRecurring = isBirthday;
+  const recurrenceRule = isBirthday ? "YEARLY" : null;
+
   const category = await prisma.category.findFirst({
     where: { slug: suggestedCategorySlug },
   });
@@ -252,20 +291,26 @@ export async function processFallbackNLP(prompt: string, userId?: string): Promi
   const formattedDate = formatDate(targetDate);
   const valorInfo = extractedAmount ? ` | Valor: ${formatCurrency(extractedAmount)}` : "";
 
+  const replyPrefix = isBirthday
+    ? `🎂 Que ótimo! Registrei o aniversário de **"${cleanTitle}"** para **${formattedDate}** (Lembrete Anual).`
+    : `Entendido! Agendei a tarefa **"${cleanTitle}"** (${category?.name || "Geral"}) para **${formattedDate}** às **${dueTime}**${extractedAmount ? ` no valor de **${formatCurrency(extractedAmount)}**` : ""}.`;
+
   return {
-    reply: `Entendido! Agendei a tarefa **"${cleanTitle}"** (${category?.name || "Geral"}) para **${formattedDate}** às **${dueTime}**${extractedAmount ? ` no valor de **${formatCurrency(extractedAmount)}**` : ""}.\n\nConfirme a atividade no cartão abaixo:`,
+    reply: `${replyPrefix}\n\nConfirme a atividade no cartão abaixo:`,
     action: {
       type: "CREATE_TASK",
       title: cleanTitle,
-      summary: `${cleanTitle} (Data: ${formattedDate} às ${dueTime} | Categoria: ${category?.name || "Geral"}${valorInfo})`,
+      summary: `${cleanTitle} (Data: ${formattedDate}${isBirthday ? "" : ` às ${dueTime}`} | Categoria: ${category?.name || "Aniversários"}${valorInfo})`,
       payload: {
         title: cleanTitle,
         description: description || null,
         categoryId: category?.id,
-        categoryName: category?.name || "Geral",
+        categoryName: category?.name || (isBirthday ? "Aniversários" : "Geral"),
         priority: suggestedPriority,
         dueDate: targetDate.toISOString(),
-        dueTime,
+        dueTime: isBirthday ? null : dueTime,
+        isRecurring,
+        recurrenceRule,
         clientName: extractedClientName || null,
         clientValue: extractedAmount ?? null,
       },

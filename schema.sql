@@ -328,7 +328,8 @@ VALUES
   ('cat_compras', 'Compras', 'compras', '#64748b', 'ShoppingCart', true, 10, NOW()),
   ('cat_projetos', 'Projetos', 'projetos', '#6366f1', 'FolderKanban', true, 11, NOW()),
   ('cat_leitura', 'Leitura', 'leitura', '#84cc16', 'BookOpen', true, 12, NOW()),
-  ('cat_outros', 'Outros', 'outros', '#94a3b8', 'Folder', true, 13, NOW())
+  ('cat_aniversarios', 'Aniversários', 'aniversarios', '#f43f5e', 'Cake', true, 13, NOW()),
+  ('cat_outros', 'Outros', 'outros', '#94a3b8', 'Folder', true, 14, NOW())
 ON CONFLICT (slug) DO UPDATE SET
   name = EXCLUDED.name,
   color = EXCLUDED.color,

@@ -114,6 +114,15 @@ export function extractCleanTaskTitleAndDescription(rawText: string): CleanTaskE
 
   // 1. Detecção semântica de categoria e prioridade
   if (
+    lower.includes("aniversár") ||
+    lower.includes("aniversar") ||
+    lower.includes("niver") ||
+    lower.includes("parabéns") ||
+    lower.includes("parabens")
+  ) {
+    suggestedCategorySlug = "aniversarios";
+    suggestedPriority = "HIGH";
+  } else if (
     lower.includes("veterinár") ||
     lower.includes("veterinar") ||
     lower.includes("médic") ||

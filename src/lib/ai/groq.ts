@@ -102,15 +102,18 @@ REGRAS CRÍTICAS E OBRIGATÓRIAS:
 
 2. O TÍTULO DA TAREFA DEVE SER LIMPO E DIRETO (2 A 5 PALAVRAS):
    - NUNCA inclua saudações ("Oi", "Olá", "Bom dia", "Boa tarde", "Boa noite", "Por favor", "Pfv").
-   - NUNCA inclua pedidos ("Gostaria que agendasse", "Me lembre de", "Preciso que", "Favor marcar").
-   - NUNCA inclua datas/horários ("amanhã", "terça", "às 8h", "às 14h30") nem valores monetários ("de 150 reais") no título da tarefa.
+   - Exemplos de títulos limpos:
+     * "Pagar a fatura do cartão de R$ 350 amanhã" -> Título: "Pagar Fatura do Cartão", Valor: 350.0
+     * "Me lembre de comprar pão amanhã às 8h" -> Título: "Comprar Pão", Horário: "08:00"
+     * "Levar o Rex ao veterinário na terça às 14:30" -> Título: "Levar o Rex ao Veterinário", Horário: "14:30"
+     * "Aniversário do Lucas dia 12 de outubro" -> Título: "Aniversário do Lucas", Categoria: "Aniversários", isRecurring: true, recurrenceRule: "YEARLY"
 
 3. CÁLCULO PRECISO DE DATAS E HORÁRIOS (A PARTIR DE HOJE: ${todayStr}):
    - Calcule a data ISO ("YYYY-MM-DDTHH:mm:ss.000Z") e o horário ("HH:mm").
 
 4. FORMATO DE EMISSÃO DA AÇÃO NO FINAL DA RESPOSTA:
-   - Para Tarefas:
-   [ACTION:{"type":"CREATE_TASK","title":"Título Limpo","summary":"Título Limpo (Data: DD/MM/AAAA às HH:mm | Categoria: Categoria)","payload":{"title":"Título Limpo","description":"Notas se houver","categoryName":"Saúde|Faculdade|Trabalho|Freelance|Estudos|Compras|Casa|Finanças","priority":"HIGH|MEDIUM|LOW|URGENT","dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","dueTime":"HH:mm","clientName":null,"clientValue":null}}]
+   - Para Tarefas e Aniversários:
+   [ACTION:{"type":"CREATE_TASK","title":"Título Limpo","summary":"Título Limpo (Data: DD/MM/AAAA às HH:mm | Categoria: Categoria)","payload":{"title":"Título Limpo","description":"Notas se houver","categoryName":"Aniversários|Saúde|Faculdade|Trabalho|Freelance|Estudos|Compras|Casa|Finanças","priority":"HIGH|MEDIUM|LOW|URGENT","dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","dueTime":"HH:mm","isRecurring":true|false,"recurrenceRule":null|"YEARLY","clientName":null,"clientValue":null}}]
 
    - Para Finanças / Contas (somente com valor se o usuário informou):
    [ACTION:{"type":"REGISTER_FINANCE","title":"Nome da Conta","summary":"Resumo da Conta","payload":{"title":"Nome da Conta","amount":null,"dueDate":"YYYY-MM-DDTHH:mm:ss.000Z","isRecurring":true|false}}]
